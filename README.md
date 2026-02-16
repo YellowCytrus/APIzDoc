@@ -36,3 +36,13 @@ docker-compose up --build
 - **Генерация**: `POST /profiles/{profile_id}/generate-pdf` — в теле запроса файл (Markdown), в ответе PDF.
 
 Без авторизации (MVP).
+
+## Frontend
+
+Vue3 + Vite + TypeScript редактор (Markdown → Typst → PDF):
+
+```bash
+cd frontend && npm install && npm run dev
+```
+
+Фронтенд: http://localhost:5173. Требуется запущенный бэкенд на порту 8000.

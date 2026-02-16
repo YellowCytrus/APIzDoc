@@ -1,13 +1,12 @@
 """
-CRUD for style profiles: POST/GET/PATCH/DELETE /profiles.
+CRUD для стилевых профилей: POST/GET/PATCH/DELETE /profiles.
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_session
+from app.deps import get_profile_repository
 from app.models.pydantic.profile import ProfileCreate, ProfileRead, ProfileUpdate
 from app.models.sqlalchemy.profile import Profile
+from app.repositories.profile_repository import ProfileRepository
 
 router = APIRouter(prefix="/profiles", tags=["profiles"])
 
@@ -15,34 +14,26 @@ router = APIRouter(prefix="/profiles", tags=["profiles"])
 @router.post("", response_model=ProfileRead)
 async def create_profile(
     body: ProfileCreate,
-    session: AsyncSession = Depends(get_session),
+    repo: ProfileRepository = Depends(get_profile_repository),
 ) -> Profile:
-    profile = Profile(name=body.name)
-    session.add(profile)
-    await session.flush()
-    await session.refresh(profile)
-    return profile
+    return await repo.create(body.name)
 
 
 @router.get("", response_model=list[ProfileRead])
 async def list_profiles(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    session: AsyncSession = Depends(get_session),
+    repo: ProfileRepository = Depends(get_profile_repository),
 ) -> list[Profile]:
-    result = await session.execute(
-        select(Profile).order_by(Profile.id).limit(limit).offset(offset)
-    )
-    return list(result.scalars().all())
+    return await repo.list(limit=limit, offset=offset)
 
 
 @router.get("/{profile_id}", response_model=ProfileRead)
 async def get_profile(
     profile_id: int,
-    session: AsyncSession = Depends(get_session),
+    repo: ProfileRepository = Depends(get_profile_repository),
 ) -> Profile:
-    result = await session.execute(select(Profile).where(Profile.id == profile_id))
-    profile = result.scalars().one_or_none()
+    profile = await repo.get_by_id(profile_id)
     if profile is None:
         raise HTTPException(status_code=404, detail="Profile not found")
     return profile
@@ -52,27 +43,19 @@ async def get_profile(
 async def update_profile(
     profile_id: int,
     body: ProfileUpdate,
-    session: AsyncSession = Depends(get_session),
+    repo: ProfileRepository = Depends(get_profile_repository),
 ) -> Profile:
-    result = await session.execute(select(Profile).where(Profile.id == profile_id))
-    profile = result.scalars().one_or_none()
+    profile = await repo.update(profile_id, body)
     if profile is None:
         raise HTTPException(status_code=404, detail="Profile not found")
-    if body.name is not None:
-        profile.name = body.name
-    await session.flush()
-    await session.refresh(profile)
     return profile
 
 
 @router.delete("/{profile_id}", status_code=204)
 async def delete_profile(
     profile_id: int,
-    session: AsyncSession = Depends(get_session),
+    repo: ProfileRepository = Depends(get_profile_repository),
 ) -> None:
-    result = await session.execute(select(Profile).where(Profile.id == profile_id))
-    profile = result.scalars().one_or_none()
-    if profile is None:
+    deleted = await repo.delete(profile_id)
+    if not deleted:
         raise HTTPException(status_code=404, detail="Profile not found")
-    await session.delete(profile)
-    await session.flush()

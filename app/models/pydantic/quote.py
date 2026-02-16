@@ -2,9 +2,9 @@ from pydantic import BaseModel, Field
 
 
 class QuoteStyles(BaseModel):
-    """GOST defaults for Typst quote block."""
+    """Значения по умолчанию ГОСТ для блока цитаты Typst."""
 
-    indent: float = Field(1.5, ge=0.0, description="Indent in em")
+    indent: float = Field(1.5, ge=0.0, description="Отступ в em")
 
 
 class QuoteStylesUpdate(BaseModel):

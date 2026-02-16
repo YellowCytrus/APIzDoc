@@ -1,1 +1,1 @@
-# FastAPI Markdown → PDF (Typst) service
+# Сервис FastAPI Markdown → PDF (Typst)

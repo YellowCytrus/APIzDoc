@@ -1,18 +1,18 @@
 """
-Build Typst #set preamble from profile elements.
-Typst uses double-quoted strings; we escape " and \\ inside.
+Построение преамбулы Typst #set из элементов профиля.
+Typst использует строки в двойных кавычках; экранируем " и \\ внутри.
 """
 from app.models.sqlalchemy.profile_element import ElementType, ProfileElement
 
 
 def _typst_str(s: str) -> str:
-    """Format Python string as Typst string literal (double-quoted)."""
+    """Форматирует строку Python как литерал строки Typst (в двойных кавычках)."""
     escaped = s.replace("\\", "\\\\").replace('"', '\\"')
     return f'"{escaped}"'
 
 
 def _typst_list_spacing(s: str) -> str:
-    """Typst list/enum spacing: 'auto' is keyword, 'tight'/'loose' map to lengths."""
+    """Интервал списка/enum в Typst: 'auto' — ключевое слово, 'tight'/'loose' преобразуются в размеры."""
     if s == "auto":
         return "auto"
     if s == "tight":
@@ -91,7 +91,7 @@ _BUILDERS = {
 
 
 def build_typst_preamble(elements: list[ProfileElement]) -> str:
-    """Build Typst #set preamble from profile elements. One block per element."""
+    """Строит преамбулу Typst #set из элементов профиля. Один блок на элемент."""
     lines: list[str] = []
     for e in elements:
         fn = _BUILDERS.get(e.element_type)

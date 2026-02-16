@@ -4,11 +4,11 @@ from pydantic import BaseModel, Field
 
 
 class NumberedListStyles(BaseModel):
-    """GOST defaults for Typst numbered list."""
+    """Значения по умолчанию ГОСТ для нумерованного списка Typst."""
 
     tight: bool = True
-    indent: float = Field(0.0, ge=0.0, description="Indent in pt")
-    body_indent: float = Field(0.5, ge=0.0, description="Body indent in em")
+    indent: float = Field(0.0, ge=0.0, description="Отступ в pt")
+    body_indent: float = Field(0.5, ge=0.0, description="Отступ тела в em")
     spacing: Literal["auto", "tight", "loose"] = "auto"
 
 

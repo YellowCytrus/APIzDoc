@@ -1,5 +1,5 @@
 """
-Convert Markdown to Typst via pandoc subprocess.
+Преобразование Markdown в Typst через подпроцесс pandoc.
 """
 import asyncio
 import subprocess
@@ -7,7 +7,7 @@ from typing import Any
 
 
 class PandocError(Exception):
-    """Pandoc conversion failed."""
+    """Ошибка преобразования Pandoc."""
 
     def __init__(self, message: str, stderr: str = "") -> None:
         self.stderr = stderr
@@ -30,6 +30,6 @@ def _markdown_to_typst_sync(markdown: bytes) -> str:
 
 
 async def markdown_to_typst(markdown: bytes) -> str:
-    """Convert Markdown bytes to Typst source string. Raises PandocError on failure."""
+    """Преобразует байты Markdown в строку исходного кода Typst. При ошибке выбрасывает PandocError."""
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(None, _markdown_to_typst_sync, markdown)

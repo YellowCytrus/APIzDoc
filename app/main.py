@@ -1,23 +1,24 @@
 """
-FastAPI app: Markdown → PDF via Typst with customizable style profiles.
+Приложение FastAPI: Markdown → PDF через Typst с настраиваемыми стилевыми профилями.
 Сервис конвертации Markdown в PDF (Typst). Тестирование: Swagger UI /docs.
 """
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.elements import bullet_list, document, figure, footnote, heading, numbered_list, par, quote, table
+from app.api.elements import get_element_routers
 from app.api.generate import router as generate_router
 from app.api.profiles import router as profiles_router
 from app.database import init_db
-from app.models.sqlalchemy import Profile, ProfileElement  # noqa: F401 — register ORM for create_all
+from app.models.sqlalchemy import Profile, ProfileElement  # noqa: F401 — регистрация ORM для create_all
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
     yield
-    # shutdown: engine dispose if needed
+    # завершение: при необходимости освободить engine
 
 
 app = FastAPI(
@@ -27,17 +28,18 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(profiles_router)
 app.include_router(generate_router)
-app.include_router(bullet_list.router)
-app.include_router(document.router)
-app.include_router(figure.router)
-app.include_router(footnote.router)
-app.include_router(heading.router)
-app.include_router(numbered_list.router)
-app.include_router(par.router)
-app.include_router(quote.router)
-app.include_router(table.router)
+for element_router in get_element_routers():
+    app.include_router(element_router)
 
 
 @app.get("/health")

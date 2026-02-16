@@ -1,20 +1,17 @@
 """
-POST /profiles/{profile_id}/generate-pdf — upload Markdown, return PDF.
+POST /profiles/{profile_id}/generate-pdf — загрузка Markdown, возврат PDF.
 """
 import logging
 from urllib.parse import quote
+
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import Response
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 
-from app.database import get_session
-from app.models.sqlalchemy.profile import Profile
-from app.models.sqlalchemy.profile_element import ProfileElement
+from app.deps import get_profile_repository
+from app.repositories.profile_repository import ProfileRepository
 from app.utils.pandoc_converter import PandocError, markdown_to_typst
 from app.utils.typst_compiler import TypstCompileError, compile_typst_to_pdf
 from app.utils.typst_preamble import build_typst_preamble
-from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -25,16 +22,13 @@ router = APIRouter(prefix="/profiles", tags=["generate"])
 async def generate_pdf(
     profile_id: int,
     file: UploadFile,
-    session: AsyncSession = Depends(get_session),
+    repo: ProfileRepository = Depends(get_profile_repository),
 ) -> Response:
     """
-    Upload a Markdown file; convert to Typst with profile styles and compile to PDF.
-    Returns PDF bytes with Content-Disposition attachment.
+    Загрузка Markdown-файла; конвертация в Typst со стилями профиля и компиляция в PDF.
+    Возвращает байты PDF с Content-Disposition attachment.
     """
-    result = await session.execute(
-        select(Profile).where(Profile.id == profile_id).options(selectinload(Profile.elements))
-    )
-    profile = result.scalars().one_or_none()
+    profile = await repo.get_by_id_with_elements(profile_id)
     if profile is None:
         raise HTTPException(status_code=404, detail="Profile not found")
 

@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 
 class FootnoteStyles(BaseModel):
-    """GOST defaults for Typst footnote."""
+    """Значения по умолчанию ГОСТ для сноски Typst."""
 
     marker_format: Literal["1", "a", "A", "i", "I", "*"] = "1"
 

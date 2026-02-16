@@ -1,6 +1,6 @@
 """
-Async database setup: SQLAlchemy + asyncpg.
-Environment: POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB, POSTGRES_HOST, POSTGRES_PORT.
+Асинхронная настройка БД: SQLAlchemy + asyncpg.
+Переменные окружения: POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB, POSTGRES_HOST, POSTGRES_PORT.
 """
 import os
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -40,6 +40,6 @@ async def get_session() -> AsyncSession:
 
 
 async def init_db() -> None:
-    """Create all tables. For production use Alembic migrations."""
+    """Создание всех таблиц. Для продакшена используйте миграции Alembic."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

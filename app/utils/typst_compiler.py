@@ -1,5 +1,5 @@
 """
-Compile Typst source to PDF via typst CLI.
+Компиляция исходников Typst в PDF через CLI typst.
 """
 import asyncio
 import subprocess
@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 class TypstCompileError(Exception):
-    """Typst compilation failed."""
+    """Ошибка компиляции Typst."""
 
     def __init__(self, message: str, stderr: str = "") -> None:
         self.stderr = stderr
@@ -38,6 +38,6 @@ def _compile_typst_to_pdf_sync(source: str) -> bytes:
 
 
 async def compile_typst_to_pdf(source: str) -> bytes:
-    """Compile Typst source to PDF bytes. Raises TypstCompileError on failure."""
+    """Компилирует исходник Typst в байты PDF. При ошибке выбрасывает TypstCompileError."""
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(None, _compile_typst_to_pdf_sync, source)

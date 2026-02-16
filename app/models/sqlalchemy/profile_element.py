@@ -33,7 +33,7 @@ class ProfileElement(Base):
         nullable=False,
     )
 
-    # Shared style columns (GOST defaults), all non-null
+    # Общие колонки стилей (значения по умолчанию ГОСТ), все NOT NULL
     tight: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=DefaultClause(text("true")))
     marker1: Mapped[str] = mapped_column(String(64), nullable=False, server_default=_text_default("'- '"))
     marker2: Mapped[str] = mapped_column(String(64), nullable=False, server_default=_text_default("'‣'"))
