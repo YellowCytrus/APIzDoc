@@ -1,13 +1,45 @@
+from typing import Literal, Optional
+
 from pydantic import BaseModel, Field
 
 
 class DocumentStyles(BaseModel):
-    """Значения по умолчанию ГОСТ для документа Typst (страница, размер текста)."""
+    """Стили документа Typst: #set text(...) + #set par(leading: ...)."""
 
     font_size: float = Field(12.0, ge=6.0, le=72.0, description="Размер шрифта в pt")
     line_spacing: float = Field(1.2, ge=0.5, le=3.0, description="Межстрочный интервал в em")
+    font: str = Field("libertinus serif", max_length=255, description="Семейство шрифта")
+    weight: Literal[
+        "thin", "extralight", "light", "regular", "medium",
+        "semibold", "bold", "extrabold", "black",
+    ] = "regular"
+    style: Literal["normal", "italic", "oblique"] = "normal"
+    fill: str = Field("black", max_length=64, description="Цвет текста")
+    lang: str = Field("en", max_length=16, description="ISO 639 код языка")
+    region: Optional[str] = Field(None, max_length=16, description="ISO 3166-1 alpha-2 регион")
+    tracking: float = Field(0.0, description="Межбуквенный интервал в pt")
+    word_spacing: float = Field(100.0, ge=0.0, le=500.0, description="Межсловный интервал в %")
+    hyphenate: Optional[bool] = Field(None, description="Перенос слов (null = auto)")
+    ligatures: bool = Field(True, description="Лигатуры")
+    number_type: Literal["auto", "lining", "old-style"] = "auto"
+    number_width: Literal["auto", "proportional", "tabular"] = "auto"
 
 
 class DocumentStylesUpdate(BaseModel):
-    font_size: float | None = Field(None, ge=6.0, le=72.0)
-    line_spacing: float | None = Field(None, ge=0.5, le=3.0)
+    font_size: Optional[float] = Field(None, ge=6.0, le=72.0)
+    line_spacing: Optional[float] = Field(None, ge=0.5, le=3.0)
+    font: Optional[str] = Field(None, max_length=255)
+    weight: Optional[Literal[
+        "thin", "extralight", "light", "regular", "medium",
+        "semibold", "bold", "extrabold", "black",
+    ]] = None
+    style: Optional[Literal["normal", "italic", "oblique"]] = None
+    fill: Optional[str] = Field(None, max_length=64)
+    lang: Optional[str] = Field(None, max_length=16)
+    region: Optional[str] = Field(None, max_length=16)
+    tracking: Optional[float] = None
+    word_spacing: Optional[float] = Field(None, ge=0.0, le=500.0)
+    hyphenate: Optional[bool] = None
+    ligatures: Optional[bool] = None
+    number_type: Optional[Literal["auto", "lining", "old-style"]] = None
+    number_width: Optional[Literal["auto", "proportional", "tabular"]] = None

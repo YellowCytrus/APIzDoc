@@ -1,25 +1,21 @@
 """
-Общие типы для роутеров элементов: ElementDescriptor и фабрика роутеров.
+Общие типы для роутеров элементов: ElementDescriptor.
 """
 from dataclasses import dataclass
-from typing import Callable, Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
-from app.models.sqlalchemy.profile_element import ElementType, ProfileElement
-
-T = TypeVar("T")
-TUpdate = TypeVar("TUpdate")
+TModel = TypeVar("TModel")
+TStyles = TypeVar("TStyles")
+TStylesUpdate = TypeVar("TStylesUpdate")
 
 
 @dataclass(frozen=True)
-class ElementDescriptor(Generic[T, TUpdate]):
-    """Дескриптор типа элемента: метаданные и функции маппинга ORM <-> DTO."""
+class ElementDescriptor(Generic[TModel, TStyles, TStylesUpdate]):
+    """Дескриптор типа элемента: ORM-модель, Pydantic-схемы, путь и тег."""
 
-    element_type: ElementType
+    orm_model: type[TModel]
     path: str
     tag: str
-    styles_model: type[T]
-    styles_update_model: type[TUpdate]
-    to_dto: Callable[[ProfileElement], T]
-    apply_full: Callable[[ProfileElement, T], None]
-    apply_partial: Callable[[ProfileElement, TUpdate], None]
+    styles_model: type[TStyles]
+    styles_update_model: type[TStylesUpdate]
     not_found_detail: str
