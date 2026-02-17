@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, watch } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useFileDialog } from '@vueuse/core';
 import EditorLayout from '../components/EditorLayout.vue';
 import { useProfilesStore } from '../stores/profiles';
@@ -9,8 +9,14 @@ import { usePandoc } from '../composables/usePandoc';
 import { useFileSave } from '../composables/useFileSave';
 import { API_BASE } from '../config';
 
+interface TitlePageItem {
+  id: number;
+  name: string;
+}
+
 const profilesStore = useProfilesStore();
 const editorStore = useEditorStore();
+const titlePages = ref<TitlePageItem[]>([]);
 const previewStore = usePreviewStore();
 const { convertMdToTypst } = usePandoc();
 const { saveFile } = useFileSave();
@@ -94,8 +100,13 @@ async function downloadPdf() {
   const fileName = editorStore.currentFileName ?? 'document.md';
   formData.append('file', blob, fileName);
 
+  const url = new URL(`${API_BASE}/profiles/${profileId}/generate-pdf`);
+  if (editorStore.titlePageId != null) {
+    url.searchParams.set('title_page_id', String(editorStore.titlePageId));
+  }
+
   try {
-    const res = await fetch(`${API_BASE}/profiles/${profileId}/generate-pdf`, {
+    const res = await fetch(url.toString(), {
       method: 'POST',
       body: formData,
     });
@@ -120,6 +131,15 @@ onMounted(async () => {
   if (profilesStore.currentId) {
     await profilesStore.loadProfileStyles(profilesStore.currentId);
   }
+  try {
+    const res = await fetch(`${API_BASE}/title-pages?limit=200`);
+    if (res.ok) {
+      const data = await res.json();
+      titlePages.value = data.map((p: { id: number; name: string }) => ({ id: p.id, name: p.name }));
+    }
+  } catch {
+    // ignore
+  }
   debouncedCompile();
 });
 </script>
@@ -134,6 +154,19 @@ onMounted(async () => {
       >
         Открыть
       </button>
+      <div class="flex items-center gap-2">
+        <label class="text-sm text-zinc-400">Титульник:</label>
+        <select
+          :value="editorStore.titlePageId ?? ''"
+          class="rounded bg-zinc-700 px-2 py-1.5 text-sm min-w-[140px]"
+          @change="editorStore.setTitlePageId(($event.target as HTMLSelectElement).value ? +(($event.target as HTMLSelectElement).value) : null)"
+        >
+          <option value="">Без титульника</option>
+          <option v-for="p in titlePages" :key="p.id" :value="p.id">
+            {{ p.name }}
+          </option>
+        </select>
+      </div>
       <button
         type="button"
         class="px-3 py-1.5 rounded bg-zinc-700 hover:bg-zinc-600 text-sm"

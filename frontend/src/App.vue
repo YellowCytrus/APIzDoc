@@ -5,6 +5,7 @@ import { computed } from 'vue';
 const route = useRoute();
 const isEditor = computed(() => route.name === 'editor');
 const isStyles = computed(() => route.name === 'styles');
+const isPages = computed(() => route.name === 'pages' || route.name === 'pages-edit');
 </script>
 
 <template>
@@ -15,6 +16,9 @@ const isStyles = computed(() => route.name === 'styles');
       </RouterLink>
       <RouterLink to="/styles" class="nav-link" :class="{ active: isStyles }">
         Стили
+      </RouterLink>
+      <RouterLink to="/pages" class="nav-link" :class="{ active: isPages }">
+        Титульники
       </RouterLink>
     </nav>
     <div class="app-content">

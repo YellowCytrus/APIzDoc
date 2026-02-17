@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import type { TabNode } from '../../config/styleFields';
+import type { TabLeaf, TabGroup, TabNode } from '../../config/styleFields';
 import type { ElementType } from '../../types/api';
 import type { StyleDataMap } from '../../composables/useStyleEditor';
 import StyleForm from './StyleForm.vue';
@@ -51,17 +51,17 @@ function forwardFieldChange(elementKey: ElementType, field: string, value: unkno
       <template v-if="nodes[activeIndex]">
         <!-- Leaf: render style form -->
         <StyleForm
-          v-if="nodes[activeIndex].kind === 'leaf'"
-          :element-key="(nodes[activeIndex] as any).elementKey"
-          :fields="(nodes[activeIndex] as any).fields"
-          :values="styles[(nodes[activeIndex] as any).elementKey] ?? {}"
+          v-if="nodes[activeIndex]?.kind === 'leaf'"
+          :element-key="(nodes[activeIndex] as TabLeaf).elementKey"
+          :fields="(nodes[activeIndex] as TabLeaf).fields"
+          :values="styles[(nodes[activeIndex] as TabLeaf).elementKey] ?? {}"
           @field-change="forwardFieldChange"
         />
 
         <!-- Group: recurse -->
         <NestedTabs
           v-else
-          :nodes="(nodes[activeIndex] as any).children"
+          :nodes="(nodes[activeIndex] as TabGroup).children ?? []"
           :depth="currentDepth + 1"
           :styles="styles"
           @field-change="forwardFieldChange"

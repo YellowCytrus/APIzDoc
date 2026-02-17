@@ -5,6 +5,7 @@ export const useEditorStore = defineStore('editor', () => {
   const content = ref('');
   const currentFileName = ref<string | null>(null);
   const debounceMs = ref(300);
+  const titlePageId = ref<number | null>(null);
 
   function setContent(s: string) {
     content.value = s;
@@ -18,6 +19,10 @@ export const useEditorStore = defineStore('editor', () => {
     debounceMs.value = Math.max(100, Math.min(1000, ms));
   }
 
+  function setTitlePageId(id: number | null) {
+    titlePageId.value = id;
+  }
+
   function clear() {
     content.value = '';
     currentFileName.value = null;
@@ -27,9 +32,11 @@ export const useEditorStore = defineStore('editor', () => {
     content,
     currentFileName,
     debounceMs,
+    titlePageId,
     setContent,
     setCurrentFileName,
     setDebounceMs,
+    setTitlePageId,
     clear,
   };
 });

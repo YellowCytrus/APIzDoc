@@ -60,8 +60,9 @@ async function deleteProfile(id: number) {
     await fetch(`${API_BASE}/profiles/${id}`, { method: 'DELETE' });
     if (profilesStore.currentId === id) {
       const remaining = profilesStore.list.filter((p) => p.id !== id);
-      if (remaining.length > 0) {
-        profilesStore.setCurrent(remaining[0].id);
+      const first = remaining[0];
+      if (first) {
+        profilesStore.setCurrent(first.id);
       }
     }
     await profilesStore.fetchProfiles();

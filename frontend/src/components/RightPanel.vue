@@ -39,9 +39,9 @@ watch(
       fetchElement<HeadingStyles>('heading'),
       fetchElement<TableStyles>('table'),
     ]);
-    docStyles.value = doc ?? { font_size: 12, line_spacing: 1.2 };
-    headingStyles.value = head ?? { numbering: '1.1.1' };
-    tableStyles.value = tbl ?? { stroke: '0.5pt' };
+    docStyles.value = doc ?? ({ font_size: 12, line_spacing: 1.2 } as DocumentStyles);
+    headingStyles.value = head ?? ({ numbering: '1.1.1' } as HeadingStyles);
+    tableStyles.value = tbl ?? ({ stroke: '0.5pt' } as TableStyles);
   },
   { immediate: true }
 );
