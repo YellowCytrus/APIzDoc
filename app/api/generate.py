@@ -6,14 +6,17 @@ import logging
 from pathlib import PurePosixPath
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
 from fastapi.responses import PlainTextResponse, Response
 
-from app.deps import get_profile_repository
+from app.deps import get_profile_repository, get_title_page_repository
+from app.models.pydantic.page_editor import TitlePageContent
 from app.repositories.profile_repository import ProfileRepository
+from app.repositories.title_page_repository import TitlePageRepository
 from app.utils.pandoc_converter import PandocError, markdown_to_typst
 from app.utils.typst_compiler import TypstCompileError, compile_typst_to_pdf
 from app.utils.typst_preamble import build_typst_preamble
+from app.utils.typst_title_exporter import generate_fragment
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +43,9 @@ async def get_preamble(
 async def generate_pdf(
     profile_id: int,
     file: UploadFile,
+    title_page_id: int | None = Query(None, description="ID титульной страницы для первой страницы PDF"),
     repo: ProfileRepository = Depends(get_profile_repository),
+    title_repo: TitlePageRepository = Depends(get_title_page_repository),
 ) -> Response:
     """
     Загрузка Markdown-файла; конвертация в Typst со стилями профиля и компиляция в PDF.
@@ -71,7 +76,23 @@ async def generate_pdf(
         raise HTTPException(status_code=500, detail="Markdown conversion failed") from e
 
     preamble = build_typst_preamble(profile)
-    full_typst = preamble + "\n" + typst_body
+
+    parts: list[str] = [preamble]
+    if title_page_id is not None:
+        title_page = await title_repo.get_by_id(title_page_id)
+        if title_page is None:
+            raise HTTPException(status_code=404, detail="Title page not found")
+        tc = TitlePageContent.model_validate(title_page.content)
+        parts.append(
+            generate_fragment(
+                tc.elements,
+                tc.paper,
+                tc.variables,
+                ignore_document_styles=tc.ignore_document_styles,
+            )
+        )
+    parts.append(typst_body)
+    full_typst = "\n".join(parts)
 
     try:
         pdf_bytes = await compile_typst_to_pdf(full_typst)

@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from app.api.elements import get_element_routers
 from app.api.generate import router as generate_router
 from app.api.profiles import router as profiles_router
+from app.api.title_pages import router as title_pages_router
 from app.database import init_db
 
 import app.models.sqlalchemy as _orm_models  # noqa: F401 — регистрация ORM для create_all
@@ -42,6 +43,7 @@ app.add_middleware(
 
 app.include_router(profiles_router)
 app.include_router(generate_router)
+app.include_router(title_pages_router)
 for element_router in get_element_routers():
     app.include_router(element_router)
 
