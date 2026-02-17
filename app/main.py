@@ -2,23 +2,27 @@
 Приложение FastAPI: Markdown → PDF через Typst с настраиваемыми стилевыми профилями.
 Сервис конвертации Markdown в PDF (Typst). Тестирование: Swagger UI /docs.
 """
+import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.elements import get_element_routers
 from app.api.generate import router as generate_router
 from app.api.profiles import router as profiles_router
 from app.database import init_db
-from app.models.sqlalchemy import Profile, ProfileElement  # noqa: F401 — регистрация ORM для create_all
+
+import app.models.sqlalchemy as _orm_models  # noqa: F401 — регистрация ORM для create_all
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
     yield
-    # завершение: при необходимости освободить engine
 
 
 app = FastAPI(
@@ -40,6 +44,13 @@ app.include_router(profiles_router)
 app.include_router(generate_router)
 for element_router in get_element_routers():
     app.include_router(element_router)
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Перехват необработанных исключений: логируем стектрейс, возвращаем 500 без деталей."""
+    logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
 @app.get("/health")
