@@ -1,37 +1,22 @@
-import type { ElementType, ProfileElementLike } from '../types/api';
+import type { ElementType } from '../types/api';
 import { API_BASE } from '../config';
 
-const ELEMENT_PATHS: ElementType[] = [
+const ALL_ELEMENT_PATHS: ElementType[] = [
+  'page',
   'document',
+  'par',
   'heading',
-  'table',
   'bullet_list',
   'numbered_list',
-  'par',
-  'quote',
+  'table',
   'figure',
   'footnote',
+  'quote',
+  'raw',
+  'strong',
+  'terms',
+  'outline',
 ];
-
-const GOST_DEFAULTS: ProfileElementLike = {
-  element_type: 'document',
-  tight: true,
-  marker1: '- ',
-  marker2: '‣',
-  marker3: '–',
-  indent_pt: 0,
-  body_indent_em: 0.5,
-  spacing: 'auto',
-  spacing_em: 1,
-  font_size_pt: 12,
-  line_spacing_em: 1.2,
-  figure_width_em: 1,
-  figure_height_em: 0,
-  table_stroke: '0.5pt',
-  heading_numbering: '1.1.1',
-  quote_indent_em: 1.5,
-  footnote_marker_fmt: '1',
-};
 
 function typstStr(s: string): string {
   const escaped = s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
@@ -45,145 +30,184 @@ function typstListSpacing(s: string): string {
   return 'auto';
 }
 
-function bulletListLine(e: ProfileElementLike): string {
-  const markers = [e.marker1, e.marker2, e.marker3];
+type DTO = Record<string, unknown>;
+
+function pageLine(e: DTO): string {
+  const args: string[] = [typstStr(e.paper as string ?? 'a4')];
+  if (e.flipped) args.push('flipped: true');
+  const mp: string[] = [];
+  if ((e.margin_top as number) !== 2.5) mp.push(`top: ${e.margin_top}cm`);
+  if ((e.margin_bottom as number) !== 2.5) mp.push(`bottom: ${e.margin_bottom}cm`);
+  if ((e.margin_left as number) !== 2.5) mp.push(`left: ${e.margin_left}cm`);
+  if ((e.margin_right as number) !== 2.5) mp.push(`right: ${e.margin_right}cm`);
+  if (mp.length) args.push(`margin: (${mp.join(', ')})`);
+  if ((e.columns as number) !== 1) args.push(`columns: ${e.columns}`);
+  if (e.numbering !== 'none') args.push(`numbering: ${typstStr(e.numbering as string)}`);
+  if (e.number_align !== 'center+bottom') args.push(`number-align: ${e.number_align}`);
+  return `#set page(${args.join(', ')})`;
+}
+
+function documentLine(e: DTO): string {
+  const ta: string[] = [`size: ${e.font_size ?? 12}pt`];
+  if (e.font && e.font !== 'libertinus serif') ta.push(`font: ${typstStr(e.font as string)}`);
+  if (e.weight && e.weight !== 'regular') ta.push(`weight: ${typstStr(e.weight as string)}`);
+  if (e.style && e.style !== 'normal') ta.push(`style: ${typstStr(e.style as string)}`);
+  if (e.fill && e.fill !== 'black') ta.push(`fill: ${e.fill}`);
+  if (e.lang && e.lang !== 'en') ta.push(`lang: ${typstStr(e.lang as string)}`);
+  if (e.tracking && (e.tracking as number) !== 0) ta.push(`tracking: ${e.tracking}pt`);
+  if (e.word_spacing && (e.word_spacing as number) !== 100) ta.push(`spacing: ${e.word_spacing}%`);
+  if (!e.ligatures && e.ligatures !== undefined) ta.push('ligatures: false');
+  return `#set text(${ta.join(', ')})\n#set par(leading: ${e.line_spacing ?? 1.2}em)`;
+}
+
+function parLine(e: DTO): string {
+  const a: string[] = [`spacing: ${e.spacing ?? 1}em`];
+  if (e.first_line_indent && (e.first_line_indent as number) !== 0) a.push(`first-line-indent: ${e.first_line_indent}em`);
+  if (e.hanging_indent && (e.hanging_indent as number) !== 0) a.push(`hanging-indent: ${e.hanging_indent}em`);
+  if (e.justify) a.push('justify: true');
+  if (e.linebreaks && e.linebreaks !== 'auto') a.push(`linebreaks: ${typstStr(e.linebreaks as string)}`);
+  return `#set par(${a.join(', ')})`;
+}
+
+function headingLine(e: DTO): string {
+  const a: string[] = [];
+  const num = (e.numbering as string) ?? '1.1.1';
+  a.push(num === 'none' ? 'numbering: none' : `numbering: ${typstStr(num)}`);
+  if (e.outlined === false) a.push('outlined: false');
+  if (e.bookmarked && e.bookmarked !== 'auto') a.push(`bookmarked: ${e.bookmarked}`);
+  if (e.offset && (e.offset as number) !== 0) a.push(`offset: ${e.offset}`);
+  return `#set heading(${a.join(', ')})`;
+}
+
+function bulletListLine(e: DTO): string {
+  const markers = (e.marker as string[]) ?? ['- ', '‣', '–'];
   const markersStr = markers.map(typstStr).join(', ');
-  return `#set list(tight: ${e.tight}, indent: ${e.indent_pt}pt, body-indent: ${e.body_indent_em}em, spacing: ${typstListSpacing(e.spacing)}, marker: (${markersStr}))`;
+  return `#set list(tight: ${e.tight ?? true}, indent: ${e.indent ?? 0}pt, body-indent: ${e.body_indent ?? 0.5}em, spacing: ${typstListSpacing((e.spacing as string) ?? 'auto')}, marker: (${markersStr}))`;
 }
 
-function documentLine(e: ProfileElementLike): string {
-  return `#set text(size: ${e.font_size_pt}pt)\n#set par(leading: ${e.line_spacing_em}em)`;
+function numberedListLine(e: DTO): string {
+  const a: string[] = [
+    `tight: ${e.tight ?? true}`,
+    `indent: ${e.indent ?? 0}pt`,
+    `body-indent: ${e.body_indent ?? 0.5}em`,
+    `spacing: ${typstListSpacing((e.spacing as string) ?? 'auto')}`,
+  ];
+  if (e.numbering && e.numbering !== '1.') a.push(`numbering: ${typstStr(e.numbering as string)}`);
+  if (e.reversed) a.push('reversed: true');
+  if (e.full) a.push('full: true');
+  return `#set enum(${a.join(', ')})`;
 }
 
-function figureLine(e: ProfileElementLike): string {
-  const w = e.figure_width_em ? `${e.figure_width_em}em` : 'auto';
-  const h = e.figure_height_em ? `${e.figure_height_em}em` : 'auto';
-  return `#set image(width: ${w}, height: ${h})`;
+function tableLine(e: DTO): string {
+  const a: string[] = [`stroke: ${e.stroke ?? '0.5pt'}`];
+  if (e.align && e.align !== 'auto') a.push(`align: ${e.align}`);
+  if (e.inset && e.inset !== '5pt') a.push(`inset: ${e.inset}`);
+  if (e.fill && e.fill !== 'none') a.push(`fill: ${e.fill}`);
+  return `#set table(${a.join(', ')})`;
 }
 
-function footnoteLine(e: ProfileElementLike): string {
-  return `#set footnote(numbering: ${typstStr(e.footnote_marker_fmt)})`;
+function figureLine(e: DTO): string {
+  const w = (e.width as number) ? `${e.width}em` : 'auto';
+  const h = (e.height as number) ? `${e.height}em` : 'auto';
+  const ia: string[] = [`width: ${w}`, `height: ${h}`];
+  if (e.fit && e.fit !== 'cover') ia.push(`fit: ${typstStr(e.fit as string)}`);
+  const parts: string[] = [`#set image(${ia.join(', ')})`];
+  const fa: string[] = [];
+  if (e.placement && e.placement !== 'none') fa.push(`placement: ${e.placement}`);
+  if (e.gap && (e.gap as number) !== 0.65) fa.push(`gap: ${e.gap}em`);
+  if (e.outlined === false) fa.push('outlined: false');
+  if (fa.length) parts.push(`#set figure(${fa.join(', ')})`);
+  return parts.join('\n');
 }
 
-function headingLine(e: ProfileElementLike): string {
-  const num = e.heading_numbering !== 'none' ? typstStr(e.heading_numbering) : 'none';
-  return `#set heading(numbering: ${num})`;
+function footnoteLine(e: DTO): string {
+  const parts: string[] = [`#set footnote(numbering: ${typstStr((e.marker_format as string) ?? '1')})`];
+  const ea: string[] = [];
+  if (e.clearance && (e.clearance as number) !== 1) ea.push(`clearance: ${e.clearance}em`);
+  if (e.gap && (e.gap as number) !== 0.5) ea.push(`gap: ${e.gap}em`);
+  if (e.indent && (e.indent as number) !== 1) ea.push(`indent: ${e.indent}em`);
+  if (ea.length) parts.push(`#set footnote.entry(${ea.join(', ')})`);
+  return parts.join('\n');
 }
 
-function numberedListLine(e: ProfileElementLike): string {
-  return `#set enum(tight: ${e.tight}, indent: ${e.indent_pt}pt, body-indent: ${e.body_indent_em}em, spacing: ${typstListSpacing(e.spacing)})`;
+function quoteLine(e: DTO): string {
+  const qa: string[] = [`block: ${e.block ?? true}`];
+  if (e.quotes && e.quotes !== 'auto') qa.push(`quotes: ${e.quotes}`);
+  return `#set quote(${qa.join(', ')})\n#show quote: set pad(x: ${e.indent ?? 1.5}em)`;
 }
 
-function parLine(e: ProfileElementLike): string {
-  return `#set par(spacing: ${e.spacing_em}em)`;
+function rawLine(e: DTO): string {
+  const a: string[] = [];
+  if (e.tab_size && (e.tab_size as number) !== 2) a.push(`tab-size: ${e.tab_size}`);
+  if (e.align && e.align !== 'start') a.push(`align: ${e.align}`);
+  if (e.theme === 'none') a.push('theme: none');
+  return a.length ? `#set raw(${a.join(', ')})` : '';
 }
 
-function quoteLine(e: ProfileElementLike): string {
-  return `#set quote(block: true)\n#show quote: set pad(x: ${e.quote_indent_em}em)`;
+function strongLine(e: DTO): string {
+  if ((e.delta as number) === 300 || e.delta === undefined) return '';
+  return `#set strong(delta: ${e.delta})`;
 }
 
-function tableLine(e: ProfileElementLike): string {
-  return `#set table(stroke: ${e.table_stroke})`;
+function termsLine(e: DTO): string {
+  const a: string[] = [`tight: ${e.tight ?? true}`];
+  if (e.indent && (e.indent as number) !== 0) a.push(`indent: ${e.indent}pt`);
+  if (e.hanging_indent && (e.hanging_indent as number) !== 2) a.push(`hanging-indent: ${e.hanging_indent}em`);
+  if (e.spacing && e.spacing !== 'auto') a.push(`spacing: ${typstListSpacing(e.spacing as string)}`);
+  return `#set terms(${a.join(', ')})`;
 }
 
-const BUILDERS: Record<ElementType, (e: ProfileElementLike) => string> = {
-  bullet_list: bulletListLine,
+function outlineLine(e: DTO): string {
+  const a: string[] = [];
+  if (e.depth != null) a.push(`depth: ${e.depth}`);
+  if (e.indent && e.indent !== 'auto') a.push(`indent: ${e.indent}`);
+  return a.length ? `#set outline(${a.join(', ')})` : '';
+}
+
+const BUILDERS: Record<ElementType, (e: DTO) => string> = {
+  page: pageLine,
   document: documentLine,
+  par: parLine,
+  heading: headingLine,
+  bullet_list: bulletListLine,
+  numbered_list: numberedListLine,
+  table: tableLine,
   figure: figureLine,
   footnote: footnoteLine,
-  heading: headingLine,
-  numbered_list: numberedListLine,
-  par: parLine,
   quote: quoteLine,
-  table: tableLine,
+  raw: rawLine,
+  strong: strongLine,
+  terms: termsLine,
+  outline: outlineLine,
 };
 
-function buildTypstPreamble(elements: Map<ElementType, ProfileElementLike>): string {
+function buildTypstPreamble(elements: Map<ElementType, DTO>): string {
   const lines: string[] = [];
-  for (const type of ELEMENT_PATHS) {
+  for (const type of ALL_ELEMENT_PATHS) {
     const e = elements.get(type);
     if (!e) continue;
     const fn = BUILDERS[type];
     if (!fn) continue;
     const part = fn(e);
-    lines.push(...part.split('\n'));
+    if (part) lines.push(...part.split('\n'));
   }
-  return (lines.length ? lines.join('\n') + '\n' : '');
-}
-
-function dtoToElement(
-  type: ElementType,
-  dto: Record<string, unknown>
-): ProfileElementLike {
-  const base = { ...GOST_DEFAULTS, element_type: type };
-  switch (type) {
-    case 'document':
-      return {
-        ...base,
-        font_size_pt: (dto.font_size as number) ?? 12,
-        line_spacing_em: (dto.line_spacing as number) ?? 1.2,
-      };
-    case 'heading':
-      return { ...base, heading_numbering: (dto.numbering as string) ?? '1.1.1' };
-    case 'table':
-      return { ...base, table_stroke: (dto.stroke as string) ?? '0.5pt' };
-    case 'bullet_list':
-      const bl = dto;
-      const m = (bl.marker as string[]) ?? ['- ', '‣', '–'];
-      return {
-        ...base,
-        tight: (bl.tight as boolean) ?? true,
-        marker1: m[0] ?? '- ',
-        marker2: m[1] ?? '‣',
-        marker3: m[2] ?? '–',
-        indent_pt: (bl.indent as number) ?? 0,
-        body_indent_em: (bl.body_indent as number) ?? 0.5,
-        spacing: (bl.spacing as string) ?? 'auto',
-      };
-    case 'numbered_list':
-      const nl = dto;
-      return {
-        ...base,
-        tight: (nl.tight as boolean) ?? true,
-        indent_pt: (nl.indent as number) ?? 0,
-        body_indent_em: (nl.body_indent as number) ?? 0.5,
-        spacing: (nl.spacing as string) ?? 'auto',
-      };
-    case 'par':
-      return { ...base, spacing_em: (dto.spacing as number) ?? 1 };
-    case 'quote':
-      return { ...base, quote_indent_em: (dto.indent as number) ?? 1.5 };
-    case 'figure':
-      const f = dto;
-      return {
-        ...base,
-        figure_width_em: (f.width as number) ?? 1,
-        figure_height_em: (f.height as number) ?? 0,
-      };
-    case 'footnote':
-      return { ...base, footnote_marker_fmt: (dto.marker_format as string) ?? '1' };
-    default:
-      return base as ProfileElementLike;
-  }
+  return lines.length ? lines.join('\n') + '\n' : '';
 }
 
 export async function loadProfileStyles(profileId: number): Promise<string> {
-  const elements = new Map<ElementType, ProfileElementLike>();
+  const elements = new Map<ElementType, DTO>();
 
   await Promise.all(
-    ELEMENT_PATHS.map(async (type) => {
+    ALL_ELEMENT_PATHS.map(async (type) => {
       try {
         const res = await fetch(`${API_BASE}/profiles/${profileId}/${type}`);
         if (res.ok) {
-          const dto = await res.json();
-          elements.set(type, dtoToElement(type, dto));
-        } else {
-          elements.set(type, { ...GOST_DEFAULTS, element_type: type });
+          elements.set(type, await res.json());
         }
       } catch {
-        elements.set(type, { ...GOST_DEFAULTS, element_type: type });
+        // skip failed elements
       }
-    })
+    }),
   );
 
   return buildTypstPreamble(elements);
