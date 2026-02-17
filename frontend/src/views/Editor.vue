@@ -48,9 +48,8 @@ async function compileMdToPreview() {
     return;
   }
 
-  const PAGE_SETUP = '#set page(paper: "a4", margin: (x: 1in, y: 1in))\n';
   const preamble = profilesStore.getCachedPreamble(profileId);
-  const fullTypst = PAGE_SETUP + (preamble ?? '') + '\n' + typstBody;
+  const fullTypst = (preamble ?? '') + '\n' + typstBody;
   previewStore.setTypstSource(fullTypst);
   previewStore.setError(null);
 }
@@ -84,24 +83,36 @@ async function downloadPdf() {
   const profileId = profilesStore.currentId;
   if (!profileId) return;
 
+  const content = editorStore.content?.trim() ?? '';
+  if (!content) {
+    alert('Документ пуст. Добавьте текст перед генерацией PDF.');
+    return;
+  }
+
   const formData = new FormData();
-  const blob = new Blob([editorStore.content], { type: 'text/markdown;charset=utf-8' });
+  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
   const fileName = editorStore.currentFileName ?? 'document.md';
   formData.append('file', blob, fileName);
 
-  const res = await fetch(`${API_BASE}/profiles/${profileId}/generate-pdf`, {
-    method: 'POST',
-    body: formData,
-  });
+  try {
+    const res = await fetch(`${API_BASE}/profiles/${profileId}/generate-pdf`, {
+      method: 'POST',
+      body: formData,
+    });
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail ?? 'Failed to generate PDF');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      const detail = typeof err.detail === 'string' ? err.detail : 'Не удалось сгенерировать PDF';
+      alert(detail);
+      return;
+    }
+
+    const pdfBlob = await res.blob();
+    const pdfName = fileName.replace(/\.(md|markdown|txt)$/i, '.pdf');
+    await saveFile(pdfBlob, pdfName);
+  } catch (e) {
+    alert((e as Error).message ?? 'Ошибка при генерации PDF');
   }
-
-  const pdfBlob = await res.blob();
-  const pdfName = fileName.replace(/\.(md|markdown|txt)$/i, '.pdf');
-  await saveFile(pdfBlob, pdfName);
 }
 
 onMounted(async () => {
