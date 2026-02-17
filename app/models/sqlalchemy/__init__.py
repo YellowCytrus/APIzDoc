@@ -1,4 +1,35 @@
 from app.models.sqlalchemy.profile import Profile
-from app.models.sqlalchemy.profile_element import ElementType, ProfileElement
+from app.models.sqlalchemy.styles import (
+    BulletListStyle,
+    DocumentStyle,
+    FigureStyle,
+    FootnoteStyle,
+    HeadingStyle,
+    NumberedListStyle,
+    OutlineStyle,
+    PageStyle,
+    ParStyle,
+    QuoteStyle,
+    RawStyle,
+    StrongStyle,
+    TableStyle,
+    TermsStyle,
+)
 
-__all__ = ["Profile", "ProfileElement", "ElementType"]
+__all__ = [
+    "Profile",
+    "BulletListStyle",
+    "DocumentStyle",
+    "FigureStyle",
+    "FootnoteStyle",
+    "HeadingStyle",
+    "NumberedListStyle",
+    "OutlineStyle",
+    "PageStyle",
+    "ParStyle",
+    "QuoteStyle",
+    "RawStyle",
+    "StrongStyle",
+    "TableStyle",
+    "TermsStyle",
+]

@@ -15,9 +15,27 @@ class ProfileRepository:
         result = await self._session.execute(select(Profile).where(Profile.id == profile_id))
         return result.scalars().one_or_none()
 
-    async def get_by_id_with_elements(self, profile_id: int) -> Profile | None:
+    async def get_by_id_with_styles(self, profile_id: int) -> Profile | None:
+        """Загружает профиль с eager load всех style-связей для генерации PDF."""
         result = await self._session.execute(
-            select(Profile).where(Profile.id == profile_id).options(selectinload(Profile.elements))
+            select(Profile)
+            .where(Profile.id == profile_id)
+            .options(
+                selectinload(Profile.bullet_list_style),
+                selectinload(Profile.document_style),
+                selectinload(Profile.figure_style),
+                selectinload(Profile.footnote_style),
+                selectinload(Profile.heading_style),
+                selectinload(Profile.numbered_list_style),
+                selectinload(Profile.outline_style),
+                selectinload(Profile.page_style),
+                selectinload(Profile.par_style),
+                selectinload(Profile.quote_style),
+                selectinload(Profile.raw_style),
+                selectinload(Profile.strong_style),
+                selectinload(Profile.table_style),
+                selectinload(Profile.terms_style),
+            )
         )
         return result.scalars().one_or_none()
 
