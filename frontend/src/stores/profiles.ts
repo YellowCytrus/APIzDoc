@@ -3,7 +3,6 @@ import { ref, computed } from 'vue';
 import { useLocalStorage } from '@vueuse/core';
 import type { Profile } from '../types/api';
 import { API_BASE } from '../config';
-import { loadProfileStyles } from '../composables/useStyles';
 
 export const useProfilesStore = defineStore('profiles', () => {
   const list = ref<Profile[]>([]);
@@ -42,8 +41,9 @@ export const useProfilesStore = defineStore('profiles', () => {
     lastProfileId.value = id;
   }
 
-  async function loadProfileStylesAction(profileId: number) {
-    const preamble = await loadProfileStyles(profileId);
+  async function loadProfileStyles(profileId: number) {
+    const res = await fetch(`${API_BASE}/profiles/${profileId}/preamble`);
+    const preamble = res.ok ? await res.text() : '';
     const cache = new Map(styleCache.value);
     cache.set(profileId, preamble);
     styleCache.value = cache;
@@ -81,7 +81,7 @@ export const useProfilesStore = defineStore('profiles', () => {
     lastProfileId,
     fetchProfiles,
     setCurrent,
-    loadProfileStyles: loadProfileStylesAction,
+    loadProfileStyles,
     getCachedPreamble,
     invalidateCache,
     createProfile,
