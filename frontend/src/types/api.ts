@@ -22,6 +22,7 @@ export interface BulletListStyles {
   indent: number;
   body_indent: number;
   spacing: 'auto' | 'tight' | 'loose';
+  text_override: TextOverrideStyles | null;
 }
 
 export interface BulletListStylesUpdate {
@@ -47,6 +48,7 @@ export interface DocumentStyles {
   ligatures: boolean;
   number_type: string;
   number_width: string;
+  justify: boolean;
 }
 
 export interface DocumentStylesUpdate {
@@ -64,6 +66,7 @@ export interface DocumentStylesUpdate {
   ligatures?: boolean;
   number_type?: string;
   number_width?: string;
+  justify?: boolean;
 }
 
 export interface FigureStyles {
@@ -73,6 +76,7 @@ export interface FigureStyles {
   gap: number;
   outlined: boolean;
   fit: string;
+  text_override: TextOverrideStyles | null;
 }
 
 export interface FigureStylesUpdate {
@@ -89,6 +93,7 @@ export interface FootnoteStyles {
   clearance: number;
   gap: number;
   indent: number;
+  text_override: TextOverrideStyles | null;
 }
 
 export interface FootnoteStylesUpdate {
@@ -100,18 +105,10 @@ export interface FootnoteStylesUpdate {
 
 export interface HeadingStyles {
   numbering: string;
-  outlined: boolean;
-  bookmarked: string;
-  offset: number;
-  hanging_indent: number | null;
 }
 
 export interface HeadingStylesUpdate {
   numbering?: string;
-  outlined?: boolean;
-  bookmarked?: string;
-  offset?: number;
-  hanging_indent?: number | null;
 }
 
 export interface NumberedListStyles {
@@ -124,6 +121,7 @@ export interface NumberedListStyles {
   full: boolean;
   reversed: boolean;
   number_align: string;
+  text_override: TextOverrideStyles | null;
 }
 
 export interface NumberedListStylesUpdate {
@@ -141,6 +139,7 @@ export interface NumberedListStylesUpdate {
 export interface OutlineStyles {
   depth: number | null;
   indent: string;
+  text_override: TextOverrideStyles | null;
 }
 
 export interface OutlineStylesUpdate {
@@ -176,22 +175,23 @@ export interface ParStyles {
   spacing: number;
   first_line_indent: number;
   hanging_indent: number;
-  justify: boolean;
   linebreaks: string;
+  text_override: TextOverrideStyles | null;
 }
 
 export interface ParStylesUpdate {
   spacing?: number;
   first_line_indent?: number;
   hanging_indent?: number;
-  justify?: boolean;
   linebreaks?: string;
+  text_override?: TextOverrideStyles | null;
 }
 
 export interface QuoteStyles {
   indent: number;
   block: boolean;
   quotes: string;
+  text_override: TextOverrideStyles | null;
 }
 
 export interface QuoteStylesUpdate {
@@ -204,6 +204,7 @@ export interface RawStyles {
   tab_size: number;
   align: string;
   theme: string;
+  text_override: TextOverrideStyles | null;
 }
 
 export interface RawStylesUpdate {
@@ -212,12 +213,43 @@ export interface RawStylesUpdate {
   theme?: string;
 }
 
-export interface StrongStyles {
-  delta: number;
+export interface EquationStyles {
+  text_override: TextOverrideStyles | null;
 }
 
-export interface StrongStylesUpdate {
-  delta?: number;
+export interface EquationStylesUpdate {
+  text_override?: TextOverrideStyles | null;
+}
+
+export interface HeadingLevelStyles {
+  level: number;
+  outlined: boolean;
+  bookmarked: string;
+  offset: number;
+  text_override: TextOverrideStyles | null;
+}
+
+export interface HeadingLevelStylesUpdate {
+  outlined?: boolean;
+  bookmarked?: string;
+  offset?: number;
+  text_override?: TextOverrideStyles | null;
+}
+
+export interface TextOverrideStyles {
+  font: string;
+  font_size: number;
+  weight: string;
+  style: string;
+  fill: string;
+  lang: string;
+  region: string | null;
+  tracking: number;
+  word_spacing: number;
+  hyphenate: boolean | null;
+  ligatures: boolean;
+  number_type: string;
+  number_width: string;
 }
 
 export interface TableStyles {
@@ -225,6 +257,7 @@ export interface TableStyles {
   align: string;
   inset: string;
   fill: string;
+  text_override: TextOverrideStyles | null;
 }
 
 export interface TableStylesUpdate {
@@ -239,6 +272,7 @@ export interface TermsStyles {
   indent: number;
   hanging_indent: number;
   spacing: 'auto' | 'tight' | 'loose';
+  text_override: TextOverrideStyles | null;
 }
 
 export interface TermsStylesUpdate {
@@ -252,15 +286,21 @@ export interface TermsStylesUpdate {
 export type ElementType =
   | 'bullet_list'
   | 'document'
+  | 'equation'
   | 'figure'
   | 'footnote'
   | 'heading'
+  | 'heading_1'
+  | 'heading_2'
+  | 'heading_3'
+  | 'heading_4'
+  | 'heading_5'
+  | 'heading_6'
   | 'numbered_list'
   | 'outline'
   | 'page'
   | 'par'
   | 'quote'
   | 'raw'
-  | 'strong'
   | 'table'
   | 'terms';

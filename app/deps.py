@@ -1,4 +1,5 @@
 """FastAPI dependency factories for repositories."""
+
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 

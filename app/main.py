@@ -2,6 +2,7 @@
 Приложение FastAPI: Markdown → PDF через Typst с настраиваемыми стилевыми профилями.
 Сервис конвертации Markdown в PDF (Typst). Тестирование: Swagger UI /docs.
 """
+
 import logging
 from contextlib import asynccontextmanager
 

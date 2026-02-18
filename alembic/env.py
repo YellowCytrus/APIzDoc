@@ -1,6 +1,6 @@
 """Alembic migration environment. Uses app.database for URL and metadata."""
+
 import asyncio
-import os
 from logging.config import fileConfig
 
 from sqlalchemy import pool

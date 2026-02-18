@@ -10,8 +10,15 @@ class DocumentStyles(BaseModel):
     line_spacing: float = Field(1.2, ge=0.5, le=3.0, description="Межстрочный интервал в em")
     font: str = Field("libertinus serif", max_length=255, description="Семейство шрифта")
     weight: Literal[
-        "thin", "extralight", "light", "regular", "medium",
-        "semibold", "bold", "extrabold", "black",
+        "thin",
+        "extralight",
+        "light",
+        "regular",
+        "medium",
+        "semibold",
+        "bold",
+        "extrabold",
+        "black",
     ] = "regular"
     style: Literal["normal", "italic", "oblique"] = "normal"
     fill: str = Field("black", max_length=64, description="Цвет текста")
@@ -23,16 +30,26 @@ class DocumentStyles(BaseModel):
     ligatures: bool = Field(True, description="Лигатуры")
     number_type: Literal["auto", "lining", "old-style"] = "auto"
     number_width: Literal["auto", "proportional", "tabular"] = "auto"
+    justify: bool = Field(False, description="Выравнивание по ширине (глобально для абзацев)")
 
 
 class DocumentStylesUpdate(BaseModel):
     font_size: Optional[float] = Field(None, ge=6.0, le=72.0)
     line_spacing: Optional[float] = Field(None, ge=0.5, le=3.0)
     font: Optional[str] = Field(None, max_length=255)
-    weight: Optional[Literal[
-        "thin", "extralight", "light", "regular", "medium",
-        "semibold", "bold", "extrabold", "black",
-    ]] = None
+    weight: Optional[
+        Literal[
+            "thin",
+            "extralight",
+            "light",
+            "regular",
+            "medium",
+            "semibold",
+            "bold",
+            "extrabold",
+            "black",
+        ]
+    ] = None
     style: Optional[Literal["normal", "italic", "oblique"]] = None
     fill: Optional[str] = Field(None, max_length=64)
     lang: Optional[str] = Field(None, max_length=16)
@@ -43,3 +60,4 @@ class DocumentStylesUpdate(BaseModel):
     ligatures: Optional[bool] = None
     number_type: Optional[Literal["auto", "lining", "old-style"]] = None
     number_width: Optional[Literal["auto", "proportional", "tabular"]] = None
+    justify: Optional[bool] = None

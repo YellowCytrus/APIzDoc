@@ -1,4 +1,5 @@
 """Generic style repository: data access for any per-profile style table."""
+
 from typing import Generic, TypeVar
 
 from sqlalchemy import select

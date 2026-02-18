@@ -6,10 +6,10 @@
  - [ ] Добавить rate limiting
  - [ ] Добавить OAuth 2.0
  - [ ] Добавить MFA/2FA
- - [ ] Добавить JWT (HttpOnly cookie) 
+ - [ ] Добавить JWT (HttpOnly cookie)
  - [ ] Добавить воркеры для будущей работы с s3
  - [ ] Устранить потенциальный path traversal в file.filename
- - [ ] app/api/elements/factory.py (17): ElementDescriptor[Any, Any, Any] : Убрать Any вместо дженериков
+ - [ ] app/api/elements/factory.py (17): ElementDescriptor[Any, Any, Any] : Убрать Any вместо дженериков, такая же тема в дескрипторах
 
 
 # Превью
@@ -22,3 +22,4 @@
 
  - [ ] Импорт/Экспорт настроек профиля стилей
  - [ ] Версионирование документа
+ - [ ] Подсветка ошибок + подсказки к ним

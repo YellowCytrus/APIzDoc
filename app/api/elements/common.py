@@ -1,8 +1,9 @@
 """
 Общие типы для роутеров элементов: ElementDescriptor.
 """
+
 from dataclasses import dataclass
-from typing import Any, Generic, TypeVar
+from typing import Generic, TypeVar
 
 TModel = TypeVar("TModel")
 TStyles = TypeVar("TStyles")

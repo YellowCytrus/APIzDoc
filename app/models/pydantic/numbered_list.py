@@ -2,6 +2,8 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
+from app.models.pydantic.text_override import TextOverrideStyles, TextOverrideStylesUpdate
+
 
 class NumberedListStyles(BaseModel):
     """Стили нумерованного списка Typst: #set enum(...)."""
@@ -15,6 +17,7 @@ class NumberedListStyles(BaseModel):
     full: bool = Field(False, description="Полная нумерация родительских уровней")
     reversed: bool = Field(False, description="Обратный порядок нумерации")
     number_align: str = Field("end+top", max_length=32, description="Выравнивание номера")
+    text_override: Optional[TextOverrideStyles] = None
 
 
 class NumberedListStylesUpdate(BaseModel):
@@ -27,3 +30,4 @@ class NumberedListStylesUpdate(BaseModel):
     full: Optional[bool] = None
     reversed: Optional[bool] = None
     number_align: Optional[str] = Field(None, max_length=32)
+    text_override: Optional[TextOverrideStylesUpdate | dict] = None

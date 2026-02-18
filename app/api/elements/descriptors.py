@@ -1,6 +1,7 @@
 """
 Регистр дескрипторов элементов: декларативный список ORM-модель + Pydantic-схемы.
 """
+
 from typing import Any
 
 from app.api.elements.common import ElementDescriptor
@@ -8,6 +9,7 @@ from app.models.pydantic.bullet_list import BulletListStyles, BulletListStylesUp
 from app.models.pydantic.document import DocumentStyles, DocumentStylesUpdate
 from app.models.pydantic.figure import FigureStyles, FigureStylesUpdate
 from app.models.pydantic.footnote import FootnoteStyles, FootnoteStylesUpdate
+from app.models.pydantic.equation import EquationStyles, EquationStylesUpdate
 from app.models.pydantic.heading import HeadingStyles, HeadingStylesUpdate
 from app.models.pydantic.numbered_list import NumberedListStyles, NumberedListStylesUpdate
 from app.models.pydantic.outline_style import OutlineStyles, OutlineStylesUpdate
@@ -15,12 +17,12 @@ from app.models.pydantic.page import PageStyles, PageStylesUpdate
 from app.models.pydantic.par import ParStyles, ParStylesUpdate
 from app.models.pydantic.quote import QuoteStyles, QuoteStylesUpdate
 from app.models.pydantic.raw import RawStyles, RawStylesUpdate
-from app.models.pydantic.strong import StrongStyles, StrongStylesUpdate
 from app.models.pydantic.table import TableStyles, TableStylesUpdate
 from app.models.pydantic.terms import TermsStyles, TermsStylesUpdate
 from app.models.sqlalchemy.styles import (
     BulletListStyle,
     DocumentStyle,
+    EquationStyle,
     FigureStyle,
     FootnoteStyle,
     HeadingStyle,
@@ -30,7 +32,6 @@ from app.models.sqlalchemy.styles import (
     ParStyle,
     QuoteStyle,
     RawStyle,
-    StrongStyle,
     TableStyle,
     TermsStyle,
 )
@@ -125,12 +126,12 @@ ELEMENT_DESCRIPTORS: list[ElementDescriptor[Any, Any, Any]] = [
         not_found_detail="Raw styles not set for this profile",
     ),
     ElementDescriptor(
-        orm_model=StrongStyle,
-        path="strong",
-        tag="strong",
-        styles_model=StrongStyles,
-        styles_update_model=StrongStylesUpdate,
-        not_found_detail="Strong styles not set for this profile",
+        orm_model=EquationStyle,
+        path="equation",
+        tag="equation",
+        styles_model=EquationStyles,
+        styles_update_model=EquationStylesUpdate,
+        not_found_detail="Equation styles not set for this profile",
     ),
     ElementDescriptor(
         orm_model=TableStyle,

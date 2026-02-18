@@ -3,8 +3,10 @@ from app.models.sqlalchemy.title_page import TitlePage
 from app.models.sqlalchemy.styles import (
     BulletListStyle,
     DocumentStyle,
+    EquationStyle,
     FigureStyle,
     FootnoteStyle,
+    HeadingLevelStyle,
     HeadingStyle,
     NumberedListStyle,
     OutlineStyle,
@@ -12,9 +14,9 @@ from app.models.sqlalchemy.styles import (
     ParStyle,
     QuoteStyle,
     RawStyle,
-    StrongStyle,
     TableStyle,
     TermsStyle,
+    TextOverrideStyle,
 )
 
 __all__ = [
@@ -22,8 +24,10 @@ __all__ = [
     "TitlePage",
     "BulletListStyle",
     "DocumentStyle",
+    "EquationStyle",
     "FigureStyle",
     "FootnoteStyle",
+    "HeadingLevelStyle",
     "HeadingStyle",
     "NumberedListStyle",
     "OutlineStyle",
@@ -31,7 +35,7 @@ __all__ = [
     "ParStyle",
     "QuoteStyle",
     "RawStyle",
-    "StrongStyle",
     "TableStyle",
     "TermsStyle",
+    "TextOverrideStyle",
 ]

@@ -1,6 +1,7 @@
 """
 Компиляция исходников Typst в PDF через CLI typst.
 """
+
 import asyncio
 import subprocess
 import tempfile
@@ -32,7 +33,8 @@ def _compile_typst_to_pdf_sync(source: str) -> bytes:
             )
         except subprocess.TimeoutExpired as exc:
             raise TypstCompileError(
-                "Typst timed out", stderr="Process exceeded 60s timeout",
+                "Typst timed out",
+                stderr="Process exceeded 60s timeout",
             ) from exc
         if result.returncode != 0:
             raise TypstCompileError(

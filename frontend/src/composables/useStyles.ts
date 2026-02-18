@@ -6,6 +6,12 @@ const ALL_ELEMENT_PATHS: ElementType[] = [
   'document',
   'par',
   'heading',
+  'heading_1',
+  'heading_2',
+  'heading_3',
+  'heading_4',
+  'heading_5',
+  'heading_6',
   'bullet_list',
   'numbered_list',
   'table',
@@ -13,7 +19,7 @@ const ALL_ELEMENT_PATHS: ElementType[] = [
   'footnote',
   'quote',
   'raw',
-  'strong',
+  'equation',
   'terms',
   'outline',
 ];
@@ -70,13 +76,23 @@ function parLine(e: DTO): string {
 }
 
 function headingLine(e: DTO): string {
-  const a: string[] = [];
   const num = (e.numbering as string) ?? '1.1.1';
-  a.push(num === 'none' ? 'numbering: none' : `numbering: ${typstStr(num)}`);
-  if (e.outlined === false) a.push('outlined: false');
-  if (e.bookmarked && e.bookmarked !== 'auto') a.push(`bookmarked: ${e.bookmarked}`);
-  if (e.offset && (e.offset as number) !== 0) a.push(`offset: ${e.offset}`);
-  return `#set heading(${a.join(', ')})`;
+  return num === 'none'
+    ? '#set heading(numbering: none)'
+    : `#set heading(numbering: ${typstStr(num)})`;
+}
+
+function headingLevelLine(e: DTO, level: number): string {
+  const args: string[] = [];
+  if (e.outlined === false) args.push('outlined: false');
+  if (e.bookmarked && e.bookmarked !== 'auto') args.push(`bookmarked: ${e.bookmarked}`);
+  if (e.offset && (e.offset as number) !== 0) args.push(`offset: ${e.offset}`);
+  const suffix = args.length ? `, ${args.join(', ')}` : '';
+  return `#show heading.where(level: ${level}): it => heading(it.body${suffix})`;
+}
+
+function equationLine(_e: DTO): string {
+  return '';
 }
 
 function bulletListLine(e: DTO): string {
@@ -144,11 +160,6 @@ function rawLine(e: DTO): string {
   return a.length ? `#set raw(${a.join(', ')})` : '';
 }
 
-function strongLine(e: DTO): string {
-  if ((e.delta as number) === 300 || e.delta === undefined) return '';
-  return `#set strong(delta: ${e.delta})`;
-}
-
 function termsLine(e: DTO): string {
   const a: string[] = [`tight: ${e.tight ?? true}`];
   if (e.indent && (e.indent as number) !== 0) a.push(`indent: ${e.indent}pt`);
@@ -169,6 +180,12 @@ const BUILDERS: Record<ElementType, (e: DTO) => string> = {
   document: documentLine,
   par: parLine,
   heading: headingLine,
+  heading_1: (e) => headingLevelLine(e, 1),
+  heading_2: (e) => headingLevelLine(e, 2),
+  heading_3: (e) => headingLevelLine(e, 3),
+  heading_4: (e) => headingLevelLine(e, 4),
+  heading_5: (e) => headingLevelLine(e, 5),
+  heading_6: (e) => headingLevelLine(e, 6),
   bullet_list: bulletListLine,
   numbered_list: numberedListLine,
   table: tableLine,
@@ -176,7 +193,7 @@ const BUILDERS: Record<ElementType, (e: DTO) => string> = {
   footnote: footnoteLine,
   quote: quoteLine,
   raw: rawLine,
-  strong: strongLine,
+  equation: equationLine,
   terms: termsLine,
   outline: outlineLine,
 };
@@ -200,7 +217,12 @@ export async function loadProfileStyles(profileId: number): Promise<string> {
   await Promise.all(
     ALL_ELEMENT_PATHS.map(async (type) => {
       try {
-        const res = await fetch(`${API_BASE}/profiles/${profileId}/${type}`);
+        const path = /^heading_\d$/.test(type)
+          ? `heading/${type.replace('heading_', '')}`
+          : type === 'equation'
+            ? 'equation'
+            : type;
+        const res = await fetch(`${API_BASE}/profiles/${profileId}/${path}`);
         if (res.ok) {
           elements.set(type, await res.json());
         }

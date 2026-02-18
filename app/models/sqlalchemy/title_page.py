@@ -1,4 +1,5 @@
 """ORM model for title pages."""
+
 from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, String

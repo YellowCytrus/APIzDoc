@@ -1,6 +1,7 @@
 """
 CRUD для титульных страниц: POST/GET/PATCH/DELETE /title-pages.
 """
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.deps import get_title_page_repository

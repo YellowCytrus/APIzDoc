@@ -2,16 +2,20 @@
 Фабрика роутеров элементов: генерирует POST/GET/PATCH/PUT из ElementDescriptor.
 Generic маппинг ORM <-> DTO через model_validate / model_dump.
 """
+
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.elements.common import ElementDescriptor
+from app.api.elements.text_override import apply_text_override
 from app.database import get_session
 from app.deps import get_profile_repository
 from app.repositories.profile_repository import ProfileRepository
 from app.repositories.style_repository import StyleRepository
+
+TEXT_OVERRIDE_KEY = "text_override"
 
 
 def create_element_router(descriptor: ElementDescriptor[Any, Any, Any]) -> APIRouter:
@@ -37,8 +41,13 @@ def create_element_router(descriptor: ElementDescriptor[Any, Any, Any]) -> APIRo
             raise HTTPException(status_code=404, detail="Profile not found")
         style_repo: StyleRepository[Any] = StyleRepository(session, orm_model)
         row = await style_repo.get_or_create(profile_id)
-        for key, value in body.model_dump().items():
-            setattr(row, key, value)
+        dump = body.model_dump()
+        text_override_val = dump.pop(TEXT_OVERRIDE_KEY, None)
+        for key, value in dump.items():
+            if hasattr(row, key):
+                setattr(row, key, value)
+        if hasattr(row, "text_override_style_id"):
+            await apply_text_override(session, row, text_override_val)
         await style_repo.persist(row)
         return styles_model.model_validate(row, from_attributes=True)
 
@@ -67,8 +76,14 @@ def create_element_router(descriptor: ElementDescriptor[Any, Any, Any]) -> APIRo
         row = await style_repo.get_by_profile_id(profile_id)
         if row is None:
             raise HTTPException(status_code=404, detail=descriptor.not_found_detail)
-        for key, value in body.model_dump(exclude_unset=True).items():
-            setattr(row, key, value)
+        dump = body.model_dump(exclude_unset=True)
+        had_text_override = TEXT_OVERRIDE_KEY in dump
+        text_override_val = dump.pop(TEXT_OVERRIDE_KEY, None)
+        for key, value in dump.items():
+            if hasattr(row, key):
+                setattr(row, key, value)
+        if had_text_override and hasattr(row, "text_override_style_id"):
+            await apply_text_override(session, row, text_override_val)
         await style_repo.persist(row)
         return styles_model.model_validate(row, from_attributes=True)
 
@@ -83,8 +98,13 @@ def create_element_router(descriptor: ElementDescriptor[Any, Any, Any]) -> APIRo
             raise HTTPException(status_code=404, detail="Profile not found")
         style_repo: StyleRepository[Any] = StyleRepository(session, orm_model)
         row = await style_repo.get_or_create(profile_id)
-        for key, value in body.model_dump().items():
-            setattr(row, key, value)
+        dump = body.model_dump()
+        text_override_val = dump.pop(TEXT_OVERRIDE_KEY, None)
+        for key, value in dump.items():
+            if hasattr(row, key):
+                setattr(row, key, value)
+        if hasattr(row, "text_override_style_id"):
+            await apply_text_override(session, row, text_override_val)
         await style_repo.persist(row)
         return styles_model.model_validate(row, from_attributes=True)
 

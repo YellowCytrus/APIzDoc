@@ -17,7 +17,8 @@ async def test_get_profiles_returns_list(client):
     name_b = f"B {uuid.uuid4().hex[:8]}"
     await client.post("/profiles", json={"name": name_a})
     await client.post("/profiles", json={"name": name_b})
-    resp = await client.get("/profiles")
+    # limit=200 чтобы новые профили (макс. id) попали в выборку
+    resp = await client.get("/profiles?limit=200")
     assert resp.status_code == 200
     data = resp.json()
     assert isinstance(data, list)

@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+# Отменять предыдущий run при новом push в ту же ветку
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Create test database
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+          PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -c "CREATE DATABASE pizdo_test;" || true
+
+      - name: Install dependencies
+        run: uv pip install -r requirements.txt
+
+      - name: Run tests
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pizdo_test
+        run: uv run pytest tests/ -m "not integration" -v --tb=short
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+
+      - name: Install ruff
+        run: uv pip install ruff
+
+      - name: Ruff check
+        run: uv run ruff check app/ tests/ --output-format=github
+
+      - name: Ruff format (dry-run)
+        run: uv run ruff format app/ tests/ --check

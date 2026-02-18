@@ -11,8 +11,10 @@ if TYPE_CHECKING:
     from app.models.sqlalchemy.styles import (
         BulletListStyle,
         DocumentStyle,
+        EquationStyle,
         FigureStyle,
         FootnoteStyle,
+        HeadingLevelStyle,
         HeadingStyle,
         NumberedListStyle,
         OutlineStyle,
@@ -20,7 +22,6 @@ if TYPE_CHECKING:
         ParStyle,
         QuoteStyle,
         RawStyle,
-        StrongStyle,
         TableStyle,
         TermsStyle,
     )
@@ -33,44 +34,76 @@ class Profile(Base):
     name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
 
     bullet_list_style: Mapped[BulletListStyle | None] = relationship(
-        back_populates="profile", cascade="all, delete-orphan", uselist=False,
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        uselist=False,
     )
     document_style: Mapped[DocumentStyle | None] = relationship(
-        back_populates="profile", cascade="all, delete-orphan", uselist=False,
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        uselist=False,
     )
     figure_style: Mapped[FigureStyle | None] = relationship(
-        back_populates="profile", cascade="all, delete-orphan", uselist=False,
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        uselist=False,
     )
     footnote_style: Mapped[FootnoteStyle | None] = relationship(
-        back_populates="profile", cascade="all, delete-orphan", uselist=False,
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        uselist=False,
     )
     heading_style: Mapped[HeadingStyle | None] = relationship(
-        back_populates="profile", cascade="all, delete-orphan", uselist=False,
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
+    heading_level_styles: Mapped[list[HeadingLevelStyle]] = relationship(
+        back_populates="profile",
+        cascade="all, delete-orphan",
+    )
+    equation_style: Mapped[EquationStyle | None] = relationship(
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        uselist=False,
     )
     numbered_list_style: Mapped[NumberedListStyle | None] = relationship(
-        back_populates="profile", cascade="all, delete-orphan", uselist=False,
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        uselist=False,
     )
     outline_style: Mapped[OutlineStyle | None] = relationship(
-        back_populates="profile", cascade="all, delete-orphan", uselist=False,
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        uselist=False,
     )
     page_style: Mapped[PageStyle | None] = relationship(
-        back_populates="profile", cascade="all, delete-orphan", uselist=False,
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        uselist=False,
     )
     par_style: Mapped[ParStyle | None] = relationship(
-        back_populates="profile", cascade="all, delete-orphan", uselist=False,
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        uselist=False,
     )
     quote_style: Mapped[QuoteStyle | None] = relationship(
-        back_populates="profile", cascade="all, delete-orphan", uselist=False,
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        uselist=False,
     )
     raw_style: Mapped[RawStyle | None] = relationship(
-        back_populates="profile", cascade="all, delete-orphan", uselist=False,
-    )
-    strong_style: Mapped[StrongStyle | None] = relationship(
-        back_populates="profile", cascade="all, delete-orphan", uselist=False,
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        uselist=False,
     )
     table_style: Mapped[TableStyle | None] = relationship(
-        back_populates="profile", cascade="all, delete-orphan", uselist=False,
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        uselist=False,
     )
     terms_style: Mapped[TermsStyle | None] = relationship(
-        back_populates="profile", cascade="all, delete-orphan", uselist=False,
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        uselist=False,
     )

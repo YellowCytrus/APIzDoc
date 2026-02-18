@@ -55,6 +55,7 @@ function forwardFieldChange(elementKey: ElementType, field: string, value: unkno
           :element-key="(nodes[activeIndex] as TabLeaf).elementKey"
           :fields="(nodes[activeIndex] as TabLeaf).fields"
           :values="styles[(nodes[activeIndex] as TabLeaf).elementKey] ?? {}"
+          :has-text-override="(nodes[activeIndex] as TabLeaf).hasTextOverride"
           @field-change="forwardFieldChange"
         />
 

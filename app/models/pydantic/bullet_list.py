@@ -1,6 +1,8 @@
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
+
+from app.models.pydantic.text_override import TextOverrideStyles
 
 _DEFAULT_MARKERS = ["- ", "‣", "–"]
 
@@ -18,6 +20,7 @@ class BulletListStyles(BaseModel):
     indent: float = Field(0.0, ge=0.0, description="Отступ в pt")
     body_indent: float = Field(0.5, ge=0.0, description="Отступ тела в em")
     spacing: Literal["auto", "tight", "loose"] = "auto"
+    text_override: Optional[TextOverrideStyles] = None
 
     @field_validator("marker")
     @classmethod
@@ -32,6 +35,7 @@ class BulletListStylesUpdate(BaseModel):
     indent: float | None = Field(None, ge=0.0)
     body_indent: float | None = Field(None, ge=0.0)
     spacing: Literal["auto", "tight", "loose"] | None = None
+    text_override: Optional[TextOverrideStyles | dict] = None
 
     @field_validator("marker")
     @classmethod

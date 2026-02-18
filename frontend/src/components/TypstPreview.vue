@@ -10,7 +10,7 @@ const scrollAreaRef = ref<HTMLElement | null>(null);
 const ZOOM_MIN = 0.25;
 const ZOOM_MAX = 2;
 const ZOOM_STEP = 0.1;
-const zoom = ref(0.5);
+const zoom = ref(1);
 
 function handleWheel(e: WheelEvent) {
   if (!e.ctrlKey && !e.metaKey) return;

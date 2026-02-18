@@ -16,6 +16,8 @@ export interface TabLeaf {
   label: string;
   elementKey: ElementType;
   fields: FieldDef[];
+  /** If true, show "Задать свой стиль для текста" toggle with text override fields */
+  hasTextOverride?: boolean;
 }
 
 export interface TabGroup {
@@ -25,6 +27,61 @@ export interface TabGroup {
 }
 
 export type TabNode = TabLeaf | TabGroup;
+
+/** Fields for "Задать свой стиль для текста" - same as document text (without line_spacing) */
+export const TEXT_OVERRIDE_FIELDS: FieldDef[] = [
+  { key: 'font', label: 'Шрифт', type: 'string' },
+  { key: 'font_size', label: 'Размер шрифта', type: 'number', min: 6, max: 72, step: 0.5, unit: 'pt' },
+  {
+    key: 'weight',
+    label: 'Насыщенность',
+    type: 'select',
+    options: [
+      { value: 'thin', label: 'Thin' },
+      { value: 'extralight', label: 'Extra Light' },
+      { value: 'light', label: 'Light' },
+      { value: 'regular', label: 'Regular' },
+      { value: 'medium', label: 'Medium' },
+      { value: 'semibold', label: 'Semibold' },
+      { value: 'bold', label: 'Bold' },
+      { value: 'extrabold', label: 'Extra Bold' },
+      { value: 'black', label: 'Black' },
+    ],
+  },
+  {
+    key: 'style',
+    label: 'Начертание',
+    type: 'select',
+    options: [
+      { value: 'normal', label: 'Обычный' },
+      { value: 'italic', label: 'Курсив' },
+      { value: 'oblique', label: 'Наклонный' },
+    ],
+  },
+  { key: 'fill', label: 'Цвет текста', type: 'string' },
+  { key: 'tracking', label: 'Межбуквенный интервал', type: 'number', min: -5, max: 20, step: 0.1, unit: 'pt' },
+  { key: 'word_spacing', label: 'Межсловный интервал', type: 'number', min: 0, max: 500, step: 5, unit: '%' },
+  { key: 'lang', label: 'Язык', type: 'select', options: [
+    { value: 'ru', label: 'Русский' },
+    { value: 'en', label: 'English' },
+    { value: 'de', label: 'Deutsch' },
+    { value: 'fr', label: 'Français' },
+    { value: 'es', label: 'Español' },
+    { value: 'zh', label: '中文' },
+    { value: 'ja', label: '日本語' },
+  ] },
+  { key: 'ligatures', label: 'Лигатуры', type: 'boolean' },
+  { key: 'number_type', label: 'Тип цифр', type: 'select', options: [
+    { value: 'auto', label: 'Авто' },
+    { value: 'lining', label: 'Маюскульные' },
+    { value: 'old-style', label: 'Минускульные' },
+  ] },
+  { key: 'number_width', label: 'Ширина цифр', type: 'select', options: [
+    { value: 'auto', label: 'Авто' },
+    { value: 'proportional', label: 'Пропорциональные' },
+    { value: 'tabular', label: 'Табличные' },
+  ] },
+];
 
 export const STYLE_TAB_TREE: TabNode[] = [
   // ── Страница ──
@@ -124,16 +181,12 @@ export const STYLE_TAB_TREE: TabNode[] = [
     ],
   },
 
-  // ── Текст и абзац ──
+  // ── Текст (глобальные настройки) ──
   {
-    kind: 'group',
-    label: 'Текст и абзац',
-    children: [
-      {
-        kind: 'leaf',
-        label: 'Текст',
-        elementKey: 'document',
-        fields: [
+    kind: 'leaf',
+    label: 'Текст',
+    elementKey: 'document',
+    fields: [
           {
             key: 'font',
             label: 'Шрифт',
@@ -245,13 +298,21 @@ export const STYLE_TAB_TREE: TabNode[] = [
               { value: 'tabular', label: 'Табличные' },
             ],
           },
+          {
+            key: 'justify',
+            label: 'По ширине',
+            type: 'boolean',
+          },
         ],
-      },
-      {
-        kind: 'leaf',
-        label: 'Абзац',
-        elementKey: 'par',
-        fields: [
+  },
+
+  // ── Абзац ──
+  {
+    kind: 'leaf',
+    label: 'Абзац',
+    elementKey: 'par',
+    hasTextOverride: true,
+    fields: [
           {
             key: 'spacing',
             label: 'Интервал между абзацами',
@@ -270,22 +331,17 @@ export const STYLE_TAB_TREE: TabNode[] = [
             step: 0.1,
             unit: 'em',
           },
-          {
-            key: 'hanging_indent',
-            label: 'Висячий отступ',
-            type: 'number',
-            min: 0,
-            max: 5,
-            step: 0.1,
-            unit: 'em',
-          },
-          {
-            key: 'justify',
-            label: 'По ширине',
-            type: 'boolean',
-          },
-          {
-            key: 'linebreaks',
+      {
+        key: 'hanging_indent',
+        label: 'Висячий отступ',
+        type: 'number',
+        min: 0,
+        max: 5,
+        step: 0.1,
+        unit: 'em',
+      },
+      {
+        key: 'linebreaks',
             label: 'Разбиение строк',
             type: 'select',
             options: [
@@ -295,43 +351,144 @@ export const STYLE_TAB_TREE: TabNode[] = [
             ],
           },
         ],
-      },
-    ],
   },
 
-  // ── Заголовок ──
+  // ── Заголовки ──
   {
-    kind: 'leaf',
-    label: 'Заголовок',
-    elementKey: 'heading',
-    fields: [
+    kind: 'group',
+    label: 'Заголовки',
+    children: [
       {
-        key: 'numbering',
-        label: 'Нумерация',
-        type: 'string',
-      },
-      {
-        key: 'outlined',
-        label: 'В оглавлении',
-        type: 'boolean',
-      },
-      {
-        key: 'bookmarked',
-        label: 'Закладка в PDF',
-        type: 'select',
-        options: [
-          { value: 'auto', label: 'Авто' },
-          { value: 'true', label: 'Да' },
-          { value: 'false', label: 'Нет' },
+        kind: 'leaf',
+        label: 'Общее',
+        elementKey: 'heading',
+        fields: [
+          {
+            key: 'numbering',
+            label: 'Нумерация',
+            type: 'string',
+          },
         ],
       },
       {
-        key: 'offset',
-        label: 'Смещение уровня',
-        type: 'number',
-        min: 0,
-        max: 5,
-        step: 1,
+        kind: 'leaf',
+        label: 'Заголовок 1',
+        elementKey: 'heading_1',
+        hasTextOverride: true,
+        fields: [
+          { key: 'outlined', label: 'В оглавлении', type: 'boolean' },
+          {
+            key: 'bookmarked',
+            label: 'Закладка в PDF',
+            type: 'select',
+            options: [
+              { value: 'auto', label: 'Авто' },
+              { value: 'true', label: 'Да' },
+              { value: 'false', label: 'Нет' },
+            ],
+          },
+          { key: 'offset', label: 'Смещение уровня', type: 'number', min: 0, max: 5, step: 1 },
+        ],
+      },
+      {
+        kind: 'leaf',
+        label: 'Заголовок 2',
+        elementKey: 'heading_2',
+        hasTextOverride: true,
+        fields: [
+          { key: 'outlined', label: 'В оглавлении', type: 'boolean' },
+          {
+            key: 'bookmarked',
+            label: 'Закладка в PDF',
+            type: 'select',
+            options: [
+              { value: 'auto', label: 'Авто' },
+              { value: 'true', label: 'Да' },
+              { value: 'false', label: 'Нет' },
+            ],
+          },
+          { key: 'offset', label: 'Смещение уровня', type: 'number', min: 0, max: 5, step: 1 },
+        ],
+      },
+      {
+        kind: 'leaf',
+        label: 'Заголовок 3',
+        elementKey: 'heading_3',
+        hasTextOverride: true,
+        fields: [
+          { key: 'outlined', label: 'В оглавлении', type: 'boolean' },
+          {
+            key: 'bookmarked',
+            label: 'Закладка в PDF',
+            type: 'select',
+            options: [
+              { value: 'auto', label: 'Авто' },
+              { value: 'true', label: 'Да' },
+              { value: 'false', label: 'Нет' },
+            ],
+          },
+          { key: 'offset', label: 'Смещение уровня', type: 'number', min: 0, max: 5, step: 1 },
+        ],
+      },
+      {
+        kind: 'leaf',
+        label: 'Заголовок 4',
+        elementKey: 'heading_4',
+        hasTextOverride: true,
+        fields: [
+          { key: 'outlined', label: 'В оглавлении', type: 'boolean' },
+          {
+            key: 'bookmarked',
+            label: 'Закладка в PDF',
+            type: 'select',
+            options: [
+              { value: 'auto', label: 'Авто' },
+              { value: 'true', label: 'Да' },
+              { value: 'false', label: 'Нет' },
+            ],
+          },
+          { key: 'offset', label: 'Смещение уровня', type: 'number', min: 0, max: 5, step: 1 },
+        ],
+      },
+      {
+        kind: 'leaf',
+        label: 'Заголовок 5',
+        elementKey: 'heading_5',
+        hasTextOverride: true,
+        fields: [
+          { key: 'outlined', label: 'В оглавлении', type: 'boolean' },
+          {
+            key: 'bookmarked',
+            label: 'Закладка в PDF',
+            type: 'select',
+            options: [
+              { value: 'auto', label: 'Авто' },
+              { value: 'true', label: 'Да' },
+              { value: 'false', label: 'Нет' },
+            ],
+          },
+          { key: 'offset', label: 'Смещение уровня', type: 'number', min: 0, max: 5, step: 1 },
+        ],
+      },
+      {
+        kind: 'leaf',
+        label: 'Заголовок 6',
+        elementKey: 'heading_6',
+        hasTextOverride: true,
+        fields: [
+          { key: 'outlined', label: 'В оглавлении', type: 'boolean' },
+          {
+            key: 'bookmarked',
+            label: 'Закладка в PDF',
+            type: 'select',
+            options: [
+              { value: 'auto', label: 'Авто' },
+              { value: 'true', label: 'Да' },
+              { value: 'false', label: 'Нет' },
+            ],
+          },
+          { key: 'offset', label: 'Смещение уровня', type: 'number', min: 0, max: 5, step: 1 },
+        ],
       },
     ],
   },
@@ -345,6 +502,7 @@ export const STYLE_TAB_TREE: TabNode[] = [
         kind: 'leaf',
         label: 'Маркированный',
         elementKey: 'bullet_list',
+        hasTextOverride: true,
         fields: [
           {
             key: 'tight',
@@ -390,6 +548,7 @@ export const STYLE_TAB_TREE: TabNode[] = [
         kind: 'leaf',
         label: 'Нумерованный',
         elementKey: 'numbered_list',
+        hasTextOverride: true,
         fields: [
           {
             key: 'tight',
@@ -456,6 +615,7 @@ export const STYLE_TAB_TREE: TabNode[] = [
         kind: 'leaf',
         label: 'Определения',
         elementKey: 'terms',
+        hasTextOverride: true,
         fields: [
           {
             key: 'tight',
@@ -500,6 +660,7 @@ export const STYLE_TAB_TREE: TabNode[] = [
     kind: 'leaf',
     label: 'Таблица',
     elementKey: 'table',
+    hasTextOverride: true,
     fields: [
       {
         key: 'stroke',
@@ -535,6 +696,7 @@ export const STYLE_TAB_TREE: TabNode[] = [
     kind: 'leaf',
     label: 'Изображение',
     elementKey: 'figure',
+    hasTextOverride: true,
     fields: [
       {
         key: 'width',
@@ -592,11 +754,21 @@ export const STYLE_TAB_TREE: TabNode[] = [
     ],
   },
 
+  // ── Формула ──
+  {
+    kind: 'leaf',
+    label: 'Формула',
+    elementKey: 'equation',
+    hasTextOverride: true,
+    fields: [],
+  },
+
   // ── Цитата ──
   {
     kind: 'leaf',
     label: 'Цитата',
     elementKey: 'quote',
+    hasTextOverride: true,
     fields: [
       {
         key: 'indent',
@@ -630,6 +802,7 @@ export const STYLE_TAB_TREE: TabNode[] = [
     kind: 'leaf',
     label: 'Сноска',
     elementKey: 'footnote',
+    hasTextOverride: true,
     fields: [
       {
         key: 'marker_format',
@@ -679,6 +852,7 @@ export const STYLE_TAB_TREE: TabNode[] = [
     kind: 'leaf',
     label: 'Код',
     elementKey: 'raw',
+    hasTextOverride: true,
     fields: [
       {
         key: 'tab_size',
@@ -710,28 +884,12 @@ export const STYLE_TAB_TREE: TabNode[] = [
     ],
   },
 
-  // ── Жирный текст ──
-  {
-    kind: 'leaf',
-    label: 'Жирный',
-    elementKey: 'strong',
-    fields: [
-      {
-        key: 'delta',
-        label: 'Дельта веса',
-        type: 'number',
-        min: 0,
-        max: 900,
-        step: 50,
-      },
-    ],
-  },
-
   // ── Оглавление ──
   {
     kind: 'leaf',
     label: 'Оглавление',
     elementKey: 'outline',
+    hasTextOverride: true,
     fields: [
       {
         key: 'depth',

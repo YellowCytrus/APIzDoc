@@ -1,10 +1,25 @@
 """Profile repository: data access for profiles."""
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.pydantic.profile import ProfileUpdate
 from app.models.sqlalchemy.profile import Profile
+from app.models.sqlalchemy.styles import (
+    BulletListStyle,
+    EquationStyle,
+    FigureStyle,
+    FootnoteStyle,
+    HeadingLevelStyle,
+    NumberedListStyle,
+    OutlineStyle,
+    ParStyle,
+    QuoteStyle,
+    RawStyle,
+    TableStyle,
+    TermsStyle,
+)
 
 
 class ProfileRepository:
@@ -21,20 +36,31 @@ class ProfileRepository:
             select(Profile)
             .where(Profile.id == profile_id)
             .options(
-                selectinload(Profile.bullet_list_style),
+                selectinload(Profile.bullet_list_style).selectinload(
+                    BulletListStyle.text_override_style
+                ),
                 selectinload(Profile.document_style),
-                selectinload(Profile.figure_style),
-                selectinload(Profile.footnote_style),
+                selectinload(Profile.equation_style).selectinload(
+                    EquationStyle.text_override_style
+                ),
+                selectinload(Profile.figure_style).selectinload(FigureStyle.text_override_style),
+                selectinload(Profile.footnote_style).selectinload(
+                    FootnoteStyle.text_override_style
+                ),
                 selectinload(Profile.heading_style),
-                selectinload(Profile.numbered_list_style),
-                selectinload(Profile.outline_style),
+                selectinload(Profile.heading_level_styles).selectinload(
+                    HeadingLevelStyle.text_override_style
+                ),
+                selectinload(Profile.numbered_list_style).selectinload(
+                    NumberedListStyle.text_override_style
+                ),
+                selectinload(Profile.outline_style).selectinload(OutlineStyle.text_override_style),
                 selectinload(Profile.page_style),
-                selectinload(Profile.par_style),
-                selectinload(Profile.quote_style),
-                selectinload(Profile.raw_style),
-                selectinload(Profile.strong_style),
-                selectinload(Profile.table_style),
-                selectinload(Profile.terms_style),
+                selectinload(Profile.par_style).selectinload(ParStyle.text_override_style),
+                selectinload(Profile.quote_style).selectinload(QuoteStyle.text_override_style),
+                selectinload(Profile.raw_style).selectinload(RawStyle.text_override_style),
+                selectinload(Profile.table_style).selectinload(TableStyle.text_override_style),
+                selectinload(Profile.terms_style).selectinload(TermsStyle.text_override_style),
             )
         )
         return result.scalars().one_or_none()

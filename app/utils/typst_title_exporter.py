@@ -3,6 +3,7 @@ Generate Typst fragment for a title page. Insert between preamble and main docum
 When ignore_document_styles=True: wrap in block with #set overrides to isolate from preamble.
 Output: #let for variables + place() calls (flow onto first page) + #pagebreak()
 """
+
 from app.models.pydantic.page_editor import (
     Element,
     PaperSize,
@@ -81,7 +82,7 @@ def generate_fragment(
 
     var_names = {e.var_name for e in elements if isinstance(e, VariableElement)}
     let_block = "\n".join(
-        f'#let {name} = [{_escape_typst_string(var_map.get(name, ""))}]'
+        f"#let {name} = [{_escape_typst_string(var_map.get(name, ''))}]"
         for name in sorted(var_names)
     )
     if let_block:

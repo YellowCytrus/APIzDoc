@@ -1,4 +1,5 @@
 """Pydantic models for page editor (title pages). Compatible with PIZDoCanvas."""
+
 from typing import Literal, Union
 
 from pydantic import BaseModel

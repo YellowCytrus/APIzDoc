@@ -2,16 +2,17 @@ export function useFileSave() {
   async function saveFile(blob: Blob, suggestedName: string): Promise<void> {
     if ('showSaveFilePicker' in window) {
       try {
+        const types: { description: string; accept: Record<string, string[]> }[] = [];
+        if (suggestedName.endsWith('.pdf')) {
+          types.push({ description: 'PDF document', accept: { 'application/pdf': ['.pdf'] } });
+        } else if (suggestedName.endsWith('.typ')) {
+          types.push({ description: 'Typst source', accept: { 'text/plain': ['.typ'] } });
+        } else {
+          types.push({ description: 'Markdown file', accept: { 'text/markdown': ['.md'] } });
+        }
         const handle = await (window as any).showSaveFilePicker({
           suggestedName,
-          types: [
-            {
-              description: suggestedName.endsWith('.pdf') ? 'PDF document' : 'Markdown file',
-              accept: suggestedName.endsWith('.pdf')
-                ? { 'application/pdf': ['.pdf'] }
-                : { 'text/markdown': ['.md'] },
-            },
-          ],
+          types,
         });
         const writable = await handle.createWritable();
         await writable.write(blob);

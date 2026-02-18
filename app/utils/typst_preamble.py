@@ -2,17 +2,20 @@
 Построение преамбулы Typst #set из стилей профиля.
 Typst использует строки в двойных кавычках; экранируем " и \\ внутри.
 """
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from app.models.sqlalchemy.profile import Profile
     from app.models.sqlalchemy.styles import (
         BulletListStyle,
         DocumentStyle,
+        EquationStyle,
         FigureStyle,
         FootnoteStyle,
+        HeadingLevelStyle,
         HeadingStyle,
         NumberedListStyle,
         OutlineStyle,
@@ -20,7 +23,6 @@ if TYPE_CHECKING:
         ParStyle,
         QuoteStyle,
         RawStyle,
-        StrongStyle,
         TableStyle,
         TermsStyle,
     )
@@ -30,6 +32,26 @@ def _typst_str(s: str) -> str:
     """Форматирует строку Python как литерал строки Typst (в двойных кавычках)."""
     escaped = s.replace("\\", "\\\\").replace('"', '\\"')
     return f'"{escaped}"'
+
+
+# Шрифты, отсутствующие в Typst → встроенные аналоги
+_FONT_ALIASES: dict[str, str] = {
+    "times new roman": "Libertinus Serif",
+    "times": "Libertinus Serif",
+    "arial": "DejaVu Sans",
+    "helvetica": "DejaVu Sans",
+    "courier new": "DejaVu Sans Mono",
+    "courier": "DejaVu Sans Mono",
+}
+
+
+def _typst_font(font: str) -> str:
+    """Нормализует имя шрифта для Typst (алиасы для отсутствующих, пустой → дефолт)."""
+    s = (font or "").strip()
+    if not s:
+        return "libertinus serif"
+    key = s.lower()
+    return _FONT_ALIASES.get(key, font)
 
 
 def _typst_list_spacing(s: str) -> str:
@@ -50,9 +72,41 @@ def _typst_bool(val: bool | None) -> str:
     return str(val).lower()
 
 
+def _text_override_to_typst_args(to: Any) -> list[str]:
+    """Build #set text(...) args from TextOverrideStyle."""
+    args: list[str] = [f"size: {to.font_size}pt"]
+    font = _typst_font(to.font)
+    if font != "libertinus serif":
+        args.append(f"font: {_typst_str(font)}")
+    if to.weight != "regular":
+        args.append(f"weight: {_typst_str(to.weight)}")
+    if to.style != "normal":
+        args.append(f"style: {_typst_str(to.style)}")
+    if to.fill != "black":
+        args.append(f"fill: {to.fill}")
+    if to.lang != "en":
+        args.append(f"lang: {_typst_str(to.lang)}")
+    if to.region is not None:
+        args.append(f"region: {_typst_str(to.region)}")
+    if to.tracking != 0.0:
+        args.append(f"tracking: {to.tracking}pt")
+    if to.word_spacing != 100.0:
+        args.append(f"spacing: {to.word_spacing}%")
+    if to.hyphenate is not None:
+        args.append(f"hyphenate: {_typst_bool(to.hyphenate)}")
+    if not to.ligatures:
+        args.append("ligatures: false")
+    if to.number_type != "auto":
+        args.append(f"number-type: {_typst_str(to.number_type)}")
+    if to.number_width != "auto":
+        args.append(f"number-width: {_typst_str(to.number_width)}")
+    return args
+
+
 # ---------------------------------------------------------------------------
 # Element builders
 # ---------------------------------------------------------------------------
+
 
 def _bullet_list_line(e: BulletListStyle) -> str:
     markers_str = ", ".join(_typst_str(m) for m in e.marker)
@@ -66,8 +120,9 @@ def _bullet_list_line(e: BulletListStyle) -> str:
 def _document_line(e: DocumentStyle) -> str:
     parts: list[str] = []
     text_args: list[str] = [f"size: {e.font_size}pt"]
-    if e.font != "libertinus serif":
-        text_args.append(f"font: {_typst_str(e.font)}")
+    font = _typst_font(e.font)
+    if font != "libertinus serif":
+        text_args.append(f"font: {_typst_str(font)}")
     if e.weight != "regular":
         text_args.append(f"weight: {_typst_str(e.weight)}")
     if e.style != "normal":
@@ -91,7 +146,10 @@ def _document_line(e: DocumentStyle) -> str:
     if e.number_width != "auto":
         text_args.append(f"number-width: {_typst_str(e.number_width)}")
     parts.append(f"#set text({', '.join(text_args)})")
-    parts.append(f"#set par(leading: {e.line_spacing}em)")
+    par_args: list[str] = [f"leading: {e.line_spacing}em"]
+    if e.justify:
+        par_args.append("justify: true")
+    parts.append(f"#set par({', '.join(par_args)})")
     return "\n".join(parts)
 
 
@@ -134,21 +192,11 @@ def _footnote_line(e: FootnoteStyle) -> str:
 
 
 def _heading_line(e: HeadingStyle) -> str:
-    args: list[str] = []
+    """Only numbering (global for all levels)."""
     num = e.numbering if e.numbering != "none" else "none"
     if num == "none":
-        args.append("numbering: none")
-    else:
-        args.append(f"numbering: {_typst_str(num)}")
-    if not e.outlined:
-        args.append("outlined: false")
-    if e.bookmarked != "auto":
-        args.append(f"bookmarked: {e.bookmarked}")
-    if e.offset != 0:
-        args.append(f"offset: {e.offset}")
-    if e.hanging_indent is not None:
-        args.append(f"hanging-indent: {e.hanging_indent}em")
-    return f"#set heading({', '.join(args)})"
+        return "#set heading(numbering: none)"
+    return f"#set heading(numbering: {_typst_str(num)})"
 
 
 def _numbered_list_line(e: NumberedListStyle) -> str:
@@ -177,8 +225,6 @@ def _par_line(e: ParStyle) -> str:
         args.append(f"first-line-indent: {e.first_line_indent}em")
     if e.hanging_indent != 0.0:
         args.append(f"hanging-indent: {e.hanging_indent}em")
-    if e.justify:
-        args.append("justify: true")
     if e.linebreaks != "auto":
         args.append(f"linebreaks: {_typst_str(e.linebreaks)}")
     return f"#set par({', '.join(args)})"
@@ -208,6 +254,7 @@ def _table_line(e: TableStyle) -> str:
 # ---------------------------------------------------------------------------
 # New element builders
 # ---------------------------------------------------------------------------
+
 
 def _page_line(e: PageStyle) -> str:
     args: list[str] = [f"{_typst_str(e.paper)}"]
@@ -246,12 +293,6 @@ def _raw_line(e: RawStyle) -> str:
     return f"#set raw({', '.join(args)})"
 
 
-def _strong_line(e: StrongStyle) -> str:
-    if e.delta == 300:
-        return ""
-    return f"#set strong(delta: {e.delta})"
-
-
 def _terms_line(e: TermsStyle) -> str:
     args: list[str] = [
         f"tight: {str(e.tight).lower()}",
@@ -277,8 +318,43 @@ def _outline_line(e: OutlineStyle) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Heading level styles: show-set (set text) или it => { set block; set text; it }
+# outlined/bookmarked/offset требуют heading(...) → рекурсия, не используем.
+# ---------------------------------------------------------------------------
+
+
+def _heading_level_line(hl: "HeadingLevelStyle") -> str:
+    """Per-level: set text (и опц. set block). Возвращаем it — без создания нового heading."""
+    level = hl.level
+    parts: list[str] = []
+
+    if level <= 2:
+        above = "1.5em" if level == 1 else "1.2em"
+        below = "1em" if level == 1 else "0.8em"
+        parts.append(f"set block(above: {above}, below: {below})")
+
+    if hl.text_override_style is not None:
+        text_args = _text_override_to_typst_args(hl.text_override_style)
+        parts.append(f"set text({', '.join(text_args)})")
+
+    if not parts:
+        return ""
+    body = "; ".join(parts)
+    return f"#show heading.where(level: {level}): it => {{ {body}; it }}"
+
+
+def _equation_show_rule(e: "EquationStyle") -> str:
+    """#show math.equation: set text(...) when equation has text override."""
+    if e.text_override_style is None:
+        return ""
+    text_args = _text_override_to_typst_args(e.text_override_style)
+    return f"#show math.equation: it => {{ set text({', '.join(text_args)}); it }}"
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def build_typst_preamble(profile: Profile) -> str:
     """Строит преамбулу Typst #set из стилей профиля. Один блок на элемент."""
@@ -296,7 +372,6 @@ def build_typst_preamble(profile: Profile) -> str:
         (profile.footnote_style, _footnote_line),
         (profile.quote_style, _quote_line),
         (profile.raw_style, _raw_line),
-        (profile.strong_style, _strong_line),
         (profile.terms_style, _terms_line),
         (profile.outline_style, _outline_line),
     ]
@@ -306,5 +381,21 @@ def build_typst_preamble(profile: Profile) -> str:
             part = builder(style)
             if part:
                 lines.extend(part.split("\n"))
+
+    # Heading level: set text + set block, возврат it
+    if profile.heading_level_styles:
+        for hl in sorted(profile.heading_level_styles, key=lambda x: x.level):
+            line = _heading_level_line(hl)
+            if line:
+                lines.append(line)
+
+    # Equation text override
+    if profile.equation_style is not None:
+        eq_part = _equation_show_rule(profile.equation_style)
+        if eq_part:
+            lines.append(eq_part)
+
+    # TODO: show rules for other elements with text_override (list, table, quote, raw, etc.)
+    # These require Typst show rule syntax per element type. Defer if complex.
 
     return "\n".join(lines) + "\n" if lines else ""

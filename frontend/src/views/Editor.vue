@@ -126,6 +126,49 @@ async function downloadPdf() {
   }
 }
 
+async function downloadTyp() {
+  const profileId = profilesStore.currentId;
+  if (!profileId) return;
+
+  const content = editorStore.content?.trim() ?? '';
+  if (!content) {
+    alert('Документ пуст. Добавьте текст перед экспортом .typ.');
+    return;
+  }
+
+  const formData = new FormData();
+  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+  const fileName = editorStore.currentFileName ?? 'document.md';
+  formData.append('file', blob, fileName);
+
+  const url = new URL(`${API_BASE}/profiles/${profileId}/export-typ`);
+  if (editorStore.titlePageId != null) {
+    url.searchParams.set('title_page_id', String(editorStore.titlePageId));
+  }
+
+  try {
+    const res = await fetch(url.toString(), {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      const detail = typeof err.detail === 'string' ? err.detail : 'Не удалось экспортировать .typ';
+      alert(detail);
+      return;
+    }
+
+    const text = await res.text();
+    const typName = fileName.match(/\.(md|markdown|txt)$/i)
+      ? fileName.replace(/\.(md|markdown|txt)$/i, '.typ')
+      : (fileName || 'document') + '.typ';
+    await saveFile(new Blob([text], { type: 'text/plain;charset=utf-8' }), typName);
+  } catch (e) {
+    alert((e as Error).message ?? 'Ошибка при экспорте .typ');
+  }
+}
+
 onMounted(async () => {
   await profilesStore.fetchProfiles();
   if (profilesStore.currentId) {
@@ -181,6 +224,14 @@ onMounted(async () => {
         @click="downloadPdf"
       >
         Скачать PDF
+      </button>
+      <button
+        type="button"
+        class="px-3 py-1.5 rounded bg-zinc-700 hover:bg-zinc-600 text-sm"
+        :disabled="!profilesStore.currentId"
+        @click="downloadTyp"
+      >
+        Экспортировать как .typ
       </button>
     </header>
     <main class="flex-1 min-h-0 overflow-hidden flex flex-col">

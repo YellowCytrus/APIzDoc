@@ -9,11 +9,20 @@ export type StyleDataMap = Record<ElementType, Record<string, unknown>>;
 
 const ALL_ELEMENT_KEYS = collectElementKeys(STYLE_TAB_TREE);
 
+function getApiPath(elementKey: ElementType): string {
+  if (/^heading_\d$/.test(elementKey)) {
+    const level = elementKey.replace('heading_', '');
+    return `heading/${level}`;
+  }
+  return elementKey;
+}
+
 async function fetchElementStyles(
   profileId: number,
   elementKey: ElementType,
 ): Promise<Record<string, unknown>> {
-  const res = await fetch(`${API_BASE}/profiles/${profileId}/${elementKey}`);
+  const path = getApiPath(elementKey);
+  const res = await fetch(`${API_BASE}/profiles/${profileId}/${path}`);
   if (!res.ok) return {};
   return res.json();
 }
@@ -23,13 +32,14 @@ async function patchElementStyles(
   elementKey: ElementType,
   patch: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
-  const res = await fetch(`${API_BASE}/profiles/${profileId}/${elementKey}`, {
+  const path = getApiPath(elementKey);
+  const res = await fetch(`${API_BASE}/profiles/${profileId}/${path}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(patch),
   });
   if (!res.ok) {
-    const res2 = await fetch(`${API_BASE}/profiles/${profileId}/${elementKey}`, {
+    const res2 = await fetch(`${API_BASE}/profiles/${profileId}/${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(patch),

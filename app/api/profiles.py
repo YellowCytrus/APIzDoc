@@ -1,6 +1,7 @@
 """
 CRUD для стилевых профилей: POST/GET/PATCH/DELETE /profiles.
 """
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.deps import get_profile_repository

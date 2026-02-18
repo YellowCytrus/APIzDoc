@@ -1,4 +1,5 @@
 """Pydantic schemas for title page API."""
+
 from datetime import datetime
 
 from pydantic import BaseModel, Field
