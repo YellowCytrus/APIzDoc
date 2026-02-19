@@ -103,6 +103,17 @@ def _text_override_to_typst_args(to: Any) -> list[str]:
     return args
 
 
+def _show_set_text_for_element(selector: str, style_with_override: Any) -> str:
+    """Return #show <selector>: set text(...) when style has text_override_style, else ''."""
+    if style_with_override is None:
+        return ""
+    to = getattr(style_with_override, "text_override_style", None)
+    if to is None:
+        return ""
+    text_args = _text_override_to_typst_args(to)
+    return f"#show {selector}: set text({', '.join(text_args)})"
+
+
 # ---------------------------------------------------------------------------
 # Element builders
 # ---------------------------------------------------------------------------
@@ -222,7 +233,7 @@ def _numbered_list_line(e: NumberedListStyle) -> str:
 def _par_line(e: ParStyle) -> str:
     args: list[str] = [f"spacing: {e.spacing}em"]
     if e.first_line_indent != 0.0:
-        args.append(f"first-line-indent: {e.first_line_indent}em")
+        args.append(f"first-line-indent: (amount: {e.first_line_indent}em, all: true)")
     if e.hanging_indent != 0.0:
         args.append(f"hanging-indent: {e.hanging_indent}em")
     if e.linebreaks != "auto":
@@ -395,7 +406,22 @@ def build_typst_preamble(profile: Profile) -> str:
         if eq_part:
             lines.append(eq_part)
 
-    # TODO: show rules for other elements with text_override (list, table, quote, raw, etc.)
-    # These require Typst show rule syntax per element type. Defer if complex.
+    # Show-set rules for text override on elements (par, list, enum, etc.)
+    _text_override_elements = [
+        ("par", profile.par_style),
+        ("list", profile.bullet_list_style),
+        ("enum", profile.numbered_list_style),
+        ("table.cell", profile.table_style),
+        ("quote", profile.quote_style),
+        ("raw", profile.raw_style),
+        ("figure", profile.figure_style),
+        ("footnote.entry", profile.footnote_style),
+        ("terms", profile.terms_style),
+        ("outline", profile.outline_style),
+    ]
+    for selector, style in _text_override_elements:
+        line = _show_set_text_for_element(selector, style)
+        if line:
+            lines.append(line)
 
     return "\n".join(lines) + "\n" if lines else ""

@@ -11,6 +11,9 @@ from alembic import context
 
 from app.database import Base, DATABASE_URL
 
+# Register all ORM models with Base.metadata for autogenerate
+import app.models.sqlalchemy  # noqa: F401
+
 config = context.config
 
 if config.config_file_name is not None:

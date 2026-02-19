@@ -68,7 +68,7 @@ function documentLine(e: DTO): string {
 
 function parLine(e: DTO): string {
   const a: string[] = [`spacing: ${e.spacing ?? 1}em`];
-  if (e.first_line_indent && (e.first_line_indent as number) !== 0) a.push(`first-line-indent: ${e.first_line_indent}em`);
+  if (e.first_line_indent && (e.first_line_indent as number) !== 0) a.push(`first-line-indent: (amount: ${e.first_line_indent}em, all: true)`);
   if (e.hanging_indent && (e.hanging_indent as number) !== 0) a.push(`hanging-indent: ${e.hanging_indent}em`);
   if (e.justify) a.push('justify: true');
   if (e.linebreaks && e.linebreaks !== 'auto') a.push(`linebreaks: ${typstStr(e.linebreaks as string)}`);
