@@ -5,12 +5,41 @@
       <div v-if="selected.type === 'text'" class="form">
         <label>Текст</label>
         <input v-model="textContent" @input="updateTextContent" />
+        <div class="text-style-section">
+          <h4>Стиль текста</h4>
+          <StyleFieldInput
+            v-for="field in TEXT_OVERRIDE_FIELDS"
+            :key="field.key"
+            :field="field"
+            :model-value="textStyleValues[field.key]"
+            @update:model-value="(v) => updateTextStyle(field.key, v)"
+          />
+        </div>
       </div>
       <div v-else-if="selected.type === 'variable'" class="form">
         <label>Имя переменной</label>
         <input v-model="varName" @input="updateVarName" />
         <label>Значение</label>
         <input v-model="varValue" @input="updateVarValue" />
+        <label>Выравнивание</label>
+        <select
+          :value="varAlign"
+          @change="updateVarAlign(($event.target as HTMLSelectElement).value)"
+        >
+          <option v-for="opt in VARIABLE_ALIGN_OPTIONS" :key="opt.value" :value="opt.value">
+            {{ opt.label }}
+          </option>
+        </select>
+        <div class="text-style-section">
+          <h4>Стиль текста</h4>
+          <StyleFieldInput
+            v-for="field in TEXT_OVERRIDE_FIELDS"
+            :key="field.key"
+            :field="field"
+            :model-value="textStyleValues[field.key]"
+            @update:model-value="(v) => updateTextStyle(field.key, v)"
+          />
+        </div>
       </div>
       <div v-else-if="selected.type === 'line'" class="form">
         <label>X1 (мм)</label>
@@ -28,12 +57,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 import { storeToRefs } from "pinia";
 import { usePageEditorStore } from "../../stores/pageEditor";
+import { TEXT_OVERRIDE_FIELDS, TITLE_TEXT_DEFAULTS, VARIABLE_ALIGN_OPTIONS } from "../../config/styleFields";
+import StyleFieldInput from "../styles/StyleFieldInput.vue";
 
 const store = usePageEditorStore();
 const { selected, variables } = storeToRefs(store);
+
+const textStyleValues = computed(() => {
+  const el = selected.value;
+  if (!el || (el.type !== "text" && el.type !== "variable")) return {};
+  const ts = (el.text_style ?? {}) as Record<string, unknown>;
+  return { ...TITLE_TEXT_DEFAULTS, ...ts };
+});
+
+const varAlign = computed(() => {
+  const el = selected.value;
+  if (el?.type !== "variable") return "left";
+  return ((el.text_style as Record<string, unknown> | undefined)?.align as string) || "left";
+});
 
 const textContent = ref("");
 const varName = ref("");
@@ -88,6 +132,19 @@ function updateLine() {
     );
   }
 }
+
+function updateTextStyle(fieldKey: string, value: unknown) {
+  const el = selected.value;
+  if (!el || (el.type !== "text" && el.type !== "variable")) return;
+  store.updateTextStyle(el.id, fieldKey, value);
+}
+
+function updateVarAlign(value: string) {
+  const el = selected.value;
+  if (el?.type === "variable") {
+    store.updateTextStyle(el.id, "align", value);
+  }
+}
 </script>
 
 <style scoped>
@@ -111,12 +168,23 @@ function updateLine() {
   font-size: 0.8rem;
   color: #a1a1aa;
 }
-.form input {
+.form input,
+.form select {
   padding: 0.35rem;
   background: #27272a;
   border: 1px solid #3f3f46;
   color: #e4e4e7;
   border-radius: 4px;
+}
+.text-style-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #3f3f46;
+}
+.text-style-section h4 {
+  font-size: 0.85rem;
+  color: #a1a1aa;
+  margin: 0 0 0.75rem 0;
 }
 .hint {
   font-size: 0.85rem;

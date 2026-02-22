@@ -134,6 +134,24 @@ export const usePageEditorStore = defineStore("pageEditor", () => {
     });
   }
 
+  function updateTextStyle(id: string, fieldKey: string, value: unknown) {
+    elements.value = elements.value.map((e) => {
+      if (e.id !== id || (e.type !== "text" && e.type !== "variable")) return e;
+      const prev = (e.type === "text" || e.type === "variable") ? e.text_style ?? {} : {};
+      const next =
+        value === undefined || value === null || value === ""
+          ? { ...prev }
+          : { ...prev, [fieldKey]: value };
+      if (value === undefined || value === null || value === "") {
+        delete (next as Record<string, unknown>)[fieldKey];
+      }
+      const cleaned = Object.fromEntries(
+        Object.entries(next).filter(([, v]) => v !== undefined && v !== null && v !== "")
+      );
+      return { ...e, text_style: Object.keys(cleaned).length ? cleaned : undefined };
+    });
+  }
+
   function updateVariableName(id: string, var_name: string) {
     const el = elements.value.find((e) => e.id === id && e.type === "variable");
     if (!el || el.type !== "variable") return;
@@ -209,6 +227,7 @@ export const usePageEditorStore = defineStore("pageEditor", () => {
     updateSize,
     updateLineEndpoints,
     updateTextContent,
+    updateTextStyle,
     updateVariableName,
     setVariableValue,
     loadContent,

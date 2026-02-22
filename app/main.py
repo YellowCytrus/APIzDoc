@@ -6,11 +6,15 @@
 import logging
 from contextlib import asynccontextmanager
 
+from pathlib import Path
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api.elements import get_element_routers
+from app.api.upload import IMAGES_DIR, router as upload_router
 from app.api.generate import router as generate_router
 from app.api.profiles import router as profiles_router
 from app.api.title_pages import router as title_pages_router
@@ -45,8 +49,14 @@ app.add_middleware(
 app.include_router(profiles_router)
 app.include_router(generate_router)
 app.include_router(title_pages_router)
+app.include_router(upload_router)
 for element_router in get_element_routers():
     app.include_router(element_router)
+
+# Раздача загруженных изображений (./images -> /images)
+_imgs = Path(IMAGES_DIR)
+_imgs.mkdir(parents=True, exist_ok=True)
+app.mount("/images", StaticFiles(directory=str(_imgs)), name="images")
 
 
 @app.exception_handler(Exception)

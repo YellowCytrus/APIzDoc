@@ -15,3 +15,7 @@ frontend/dist/
 
 # Example code
 src-example/
+
+# Uploaded images (stored locally in project)
+images/*
+!images/.gitkeep

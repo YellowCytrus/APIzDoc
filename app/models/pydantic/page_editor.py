@@ -1,6 +1,6 @@
 """Pydantic models for page editor (title pages). Compatible with PIZDoCanvas."""
 
-from typing import Literal, Union
+from typing import Any, Literal, Optional, Union
 
 from pydantic import BaseModel
 
@@ -22,6 +22,7 @@ class TextElement(BaseModel):
     x_mm: float
     y_mm: float
     content: str = "Sample Text"
+    text_style: Optional[dict[str, Any]] = None
 
 
 class VariableElement(BaseModel):
@@ -34,6 +35,7 @@ class VariableElement(BaseModel):
     width_mm: float = 50.0
     height_lines: float = 2.0
     var_name: str = "var"
+    text_style: Optional[dict[str, Any]] = None
 
 
 class LineElement(BaseModel):

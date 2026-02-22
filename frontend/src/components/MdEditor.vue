@@ -58,6 +58,7 @@ defineExpose({
     @drop="handleDrop"
     @dragover="handleDragOver"
   >
+    <!-- noUploadImg: только кнопка "Вставить картинку" в LeftToolbar загружает файлы; paste и toolbar md-editor не создают дубликаты -->
     <MdEditorComponent
       ref="editorRef"
       v-model="content"
@@ -65,6 +66,7 @@ defineExpose({
       :preview="false"
       language="ru-RU"
       placeholder="Введите Markdown..."
+      :no-upload-img="true"
     />
   </div>
 </template>

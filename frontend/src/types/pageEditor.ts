@@ -1,5 +1,24 @@
 /** Page editor types aligned with backend Pydantic models. */
 
+/** Text style for title page elements (text, variable). Mirrors TextOverrideStyles. */
+export interface TextStyle {
+  font?: string;
+  font_size?: number;
+  weight?: string;
+  style?: string;
+  fill?: string;
+  tracking?: number;
+  word_spacing?: number;
+  lang?: string;
+  region?: string;
+  hyphenate?: boolean | string;
+  ligatures?: boolean;
+  number_type?: string;
+  number_width?: string;
+  /** Horizontal alignment for variable elements: left, center, right, justify */
+  align?: "left" | "center" | "right" | "justify";
+}
+
 export interface Paper {
   name: string;
   width: number;
@@ -13,6 +32,7 @@ export interface TextElement {
   x_mm: number;
   y_mm: number;
   content: string;
+  text_style?: TextStyle;
 }
 
 export interface VariableElement {
@@ -23,6 +43,7 @@ export interface VariableElement {
   width_mm: number;
   height_lines: number;
   var_name: string;
+  text_style?: TextStyle;
 }
 
 export interface LineElement {

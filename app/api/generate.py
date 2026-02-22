@@ -15,6 +15,7 @@ from app.deps import get_profile_repository, get_title_page_repository
 from app.models.pydantic.page_editor import TitlePageContent
 from app.repositories.profile_repository import ProfileRepository
 from app.repositories.title_page_repository import TitlePageRepository
+from app.api.upload import IMAGES_DIR
 from app.utils.pandoc_converter import PandocError, markdown_to_typst
 from app.utils.typst_compiler import TypstCompileError, compile_typst_to_pdf
 from app.utils.typst_preamble import build_typst_preamble
@@ -113,7 +114,7 @@ async def generate_pdf(
     full_typst = "\n".join(parts)
 
     try:
-        pdf_bytes = await compile_typst_to_pdf(full_typst)
+        pdf_bytes = await compile_typst_to_pdf(full_typst, images_dir=IMAGES_DIR)
     except TypstCompileError as e:
         logger.exception("Typst compile failed: %s", e.stderr)
         raise HTTPException(status_code=500, detail="PDF compilation failed") from e

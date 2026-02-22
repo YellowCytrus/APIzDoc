@@ -1,8 +1,11 @@
 """
 Компиляция исходников Typst в PDF через CLI typst.
+Поддержка локальных изображений: пути вида images/... копируются в tmpdir перед компиляцией.
 """
 
 import asyncio
+import re
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -16,12 +19,32 @@ class TypstCompileError(Exception):
         super().__init__(message)
 
 
-def _compile_typst_to_pdf_sync(source: str) -> bytes:
+def _extract_image_paths(typst_source: str) -> list[str]:
+    """Извлекает локальные пути к изображениям из typst: image("path") или image("path", ...)."""
+    matches = re.findall(r'image\s*\(\s*"([^"]+)"', typst_source)
+    # Только локальные пути (не http/https, не data:)
+    return [p for p in matches if not p.startswith(("http://", "https://", "data:"))]
+
+
+def _compile_typst_to_pdf_sync(source: str, images_dir: Path | None = None) -> bytes:
     with tempfile.TemporaryDirectory() as tmpdir:
         root = Path(tmpdir)
         inp = root / "input.typ"
         out = root / "output.pdf"
         inp.write_text(source, encoding="utf-8")
+
+        # Копируем локальные изображения в tmpdir
+        if images_dir is not None and images_dir.exists():
+            for rel_path in _extract_image_paths(source):
+                # Поддержка только путей images/xxx, без path traversal
+                if not rel_path.startswith("images/") or ".." in rel_path:
+                    continue
+                src_file = images_dir / Path(rel_path).name
+                if src_file.exists() and src_file.is_file():
+                    dst_subdir = root / Path(rel_path).parent
+                    dst_subdir.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(src_file, root / rel_path)
+
         try:
             result = subprocess.run(
                 ["typst", "compile", str(inp), str(out)],
@@ -44,7 +67,11 @@ def _compile_typst_to_pdf_sync(source: str) -> bytes:
         return out.read_bytes()
 
 
-async def compile_typst_to_pdf(source: str) -> bytes:
-    """Компилирует исходник Typst в байты PDF. При ошибке выбрасывает TypstCompileError."""
+async def compile_typst_to_pdf(
+    source: str,
+    images_dir: Path | None = None,
+) -> bytes:
+    """Компилирует исходник Typst в байты PDF. При ошибке выбрасывает TypstCompileError.
+    images_dir: корень проекта, откуда берутся файлы images/... (по умолчанию None)."""
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, _compile_typst_to_pdf_sync, source)
+    return await loop.run_in_executor(None, lambda: _compile_typst_to_pdf_sync(source, images_dir))

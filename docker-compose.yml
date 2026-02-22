@@ -34,6 +34,7 @@ services:
       - ./app:/app/app
       - ./alembic:/app/alembic
       - ./alembic.ini:/app/alembic.ini
+      - ./images:/app/images
     command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     networks:
       - pizdo
@@ -44,6 +45,3 @@ volumes:
 networks:
   pizdo:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.28.16.0/24

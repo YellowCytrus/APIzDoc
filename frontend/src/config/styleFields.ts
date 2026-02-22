@@ -28,6 +28,31 @@ export interface TabGroup {
 
 export type TabNode = TabLeaf | TabGroup;
 
+/** Default text style for title page elements (text, variable). */
+export const TITLE_TEXT_DEFAULTS: Record<string, unknown> = {
+  font: 'Libertinus Serif',
+  font_size: 12,
+  weight: 'regular',
+  style: 'normal',
+  fill: 'black',
+  tracking: 0,
+  word_spacing: 100,
+  lang: 'ru',
+  ligatures: true,
+  number_type: 'auto',
+  number_width: 'auto',
+  hyphenate: 'auto',
+  align: 'left',
+};
+
+/** Alignment options for variable elements in title page. */
+export const VARIABLE_ALIGN_OPTIONS: { value: string; label: string }[] = [
+  { value: 'left', label: 'По левому краю' },
+  { value: 'center', label: 'По центру' },
+  { value: 'right', label: 'По правому краю' },
+  { value: 'justify', label: 'По ширине' },
+];
+
 /** Fields for "Задать свой стиль для текста" - same as document text (without line_spacing) */
 export const TEXT_OVERRIDE_FIELDS: FieldDef[] = [
   { key: 'font', label: 'Шрифт', type: 'string' },
@@ -81,6 +106,17 @@ export const TEXT_OVERRIDE_FIELDS: FieldDef[] = [
     { value: 'proportional', label: 'Пропорциональные' },
     { value: 'tabular', label: 'Табличные' },
   ] },
+  { key: 'region', label: 'Регион', type: 'string' },
+  {
+    key: 'hyphenate',
+    label: 'Переносы',
+    type: 'select',
+    options: [
+      { value: 'auto', label: 'Авто' },
+      { value: 'true', label: 'Да' },
+      { value: 'false', label: 'Нет' },
+    ],
+  },
 ];
 
 export const STYLE_TAB_TREE: TabNode[] = [

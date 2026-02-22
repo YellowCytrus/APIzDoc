@@ -4,6 +4,10 @@ import router from './router';
 import App from './App.vue';
 import './style.css';
 import '@fontsource/roboto/400.css';
+import '@fontsource/libertinus-serif/400.css';
+import '@fontsource/libertinus-serif/400-italic.css';
+import '@fontsource/libertinus-serif/600.css';
+import '@fontsource/libertinus-serif/700.css';
 import { $typst } from '@myriaddreamin/typst.ts/contrib/snippet';
 
 // Fix WASM loading in Vite: provide explicit URLs for typst modules

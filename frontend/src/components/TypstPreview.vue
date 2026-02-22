@@ -2,8 +2,39 @@
 import { watch, ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import { usePreviewStore } from '../stores/preview';
 import { $typst } from '@myriaddreamin/typst.ts/contrib/snippet';
+import { API_BASE } from '../config';
 
 const previewStore = usePreviewStore();
+
+/** Извлекает локальные пути к изображениям из typst: image("path") */
+function extractImagePaths(typstSource: string): string[] {
+  const matches = typstSource.matchAll(/image\s*\(\s*"([^"]+)"/g);
+  const paths: string[] = [];
+  for (const m of matches) {
+    const p = m[1];
+    if (p && !p.startsWith('http://') && !p.startsWith('https://') && !p.startsWith('data:')) {
+      paths.push(p);
+    }
+  }
+  return [...new Set(paths)];
+}
+
+/** Загружает изображения и регистрирует в typst virtual FS. При 404 — пропускаем (скрываем блок по плану). */
+async function registerImagesForPreview(paths: string[]): Promise<void> {
+  await $typst.resetShadow();
+  for (const relPath of paths) {
+    if (!relPath.startsWith('images/') || relPath.includes('..')) continue;
+    const filename = relPath.replace(/^images\//, '');
+    try {
+      const res = await fetch(`${API_BASE}/images/${filename}`);
+      if (!res.ok) continue;
+      const buf = await res.arrayBuffer();
+      await $typst.mapShadow(`/${relPath}`, new Uint8Array(buf));
+    } catch {
+      // Пропускаем при ошибке
+    }
+  }
+}
 const canvasContainerRef = ref<HTMLElement | null>(null);
 const scrollAreaRef = ref<HTMLElement | null>(null);
 
@@ -46,9 +77,14 @@ async function compileToCanvas(mainContent: string) {
     return;
   }
 
+  const imagePaths = extractImagePaths(mainContent);
+  await registerImagesForPreview(imagePaths);
+
   try {
+    await $typst.addSource('/main.typ', mainContent);
     await $typst.canvas(container, {
-      mainContent,
+      mainFilePath: '/main.typ',
+      root: '/',
       backgroundColor: '#ffffff',
       pixelPerPt: 2.5,
     });
