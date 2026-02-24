@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 
 revision: str = "b2c3d4e5f6a7"
@@ -18,11 +19,22 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "figure_styles",
-        sa.Column("caption_template", sa.String(256), nullable=True),
-    )
+    conn = op.get_bind()
+    # Add column only if missing (e.g. test DB created with create_all already has it)
+    insp = inspect(conn)
+    if "figure_styles" in insp.get_table_names():
+        cols = [c["name"] for c in insp.get_columns("figure_styles")]
+        if "caption_template" not in cols:
+            op.add_column(
+                "figure_styles",
+                sa.Column("caption_template", sa.String(256), nullable=True),
+            )
 
 
 def downgrade() -> None:
-    op.drop_column("figure_styles", "caption_template")
+    conn = op.get_bind()
+    insp = inspect(conn)
+    if "figure_styles" in insp.get_table_names():
+        cols = [c["name"] for c in insp.get_columns("figure_styles")]
+        if "caption_template" in cols:
+            op.drop_column("figure_styles", "caption_template")
