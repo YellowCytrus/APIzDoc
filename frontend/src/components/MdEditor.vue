@@ -91,7 +91,6 @@ defineExpose({
 const cropModalOpen = ref(false);
 const cropFile = ref<File | null>(null);
 const cropImageUrl = ref('');
-const cropInputRef = ref<HTMLInputElement | null>(null);
 const cropCanvasRef = ref<HTMLCanvasElement | null>(null);
 const cropPreviewRef = ref<HTMLImageElement | null>(null);
 let cropImage: HTMLImageElement | null = null;
@@ -99,10 +98,6 @@ let cropX = 0;
 let cropY = 0;
 let cropW = 100;
 let cropH = 100;
-
-function openCropInput() {
-  cropInputRef.value?.click();
-}
 
 function onCropFileSelected(e: Event) {
   const input = e.target as HTMLInputElement;
@@ -216,16 +211,6 @@ async function applyCrop() {
       class="hidden"
       @change="onCropFileSelected"
     />
-    <div class="flex items-center gap-2 px-2 py-1 border-b border-zinc-700 bg-zinc-800/50">
-      <button
-        type="button"
-        class="text-xs text-zinc-400 hover:text-zinc-200 px-2 py-1 rounded"
-        title="Обрезать изображение"
-        @click="openCropInput"
-      >
-        Обрезать
-      </button>
-    </div>
     <MdEditorComponent
       ref="editorRef"
       v-model="content"
