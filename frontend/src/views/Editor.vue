@@ -104,6 +104,9 @@ async function downloadPdf() {
   if (editorStore.titlePageId != null) {
     url.searchParams.set('title_page_id', String(editorStore.titlePageId));
   }
+  if (editorStore.titlePageId != null) {
+    url.searchParams.set('title_page_id', String(editorStore.titlePageId));
+  }
 
   try {
     const res = await fetch(url.toString(), {

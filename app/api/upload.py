@@ -1,6 +1,7 @@
 """
 POST /upload-image — загрузка изображения в локальное хранилище проекта.
-Изображения сохраняются в ./images/ с именем {uuid}.{ext}.
+GET /image-assets — список зарегистрированных путей изображений.
+Изображения сохраняются в ./images/ с именем {uuid}.{ext}, пути записываются в таблицу image_assets.
 """
 
 import logging
@@ -8,7 +9,13 @@ import re
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi.responses import FileResponse
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.database import get_session
+from app.models.sqlalchemy.image_asset import ImageAsset
 
 logger = logging.getLogger(__name__)
 
@@ -50,10 +57,13 @@ def _validate_no_path_traversal(filename: str) -> None:
 
 
 @router.post("/upload-image")
-async def upload_image(file: UploadFile) -> dict[str, str]:
+async def upload_image(
+    file: UploadFile,
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, str | int]:
     """
     Загружает изображение в локальное хранилище.
-    Возвращает {"path": "images/uuid.ext"} для вставки в Markdown.
+    Возвращает {"id": int, "path": "images/uuid.ext"}. Вставка в редактор: /image-assets/{id}/file.
     """
     if not file.filename:
         raise HTTPException(status_code=400, detail="Missing filename")
@@ -89,5 +99,65 @@ async def upload_image(file: UploadFile) -> dict[str, str]:
 
     # Относительный путь для Markdown: images/uuid.ext
     path = f"images/{safe_name}"
-    logger.info("Uploaded image: %s", path)
-    return {"path": path}
+
+    # Запись в таблицу image_assets
+    asset = ImageAsset(
+        path=path,
+        original_filename=file.filename,
+    )
+    session.add(asset)
+    await session.flush()
+
+    logger.info("Uploaded image: %s (id=%s)", path, asset.id)
+    return {"id": asset.id, "path": path}
+
+
+@router.get("/image-assets/{asset_id}/file")
+async def get_image_asset_file(
+    asset_id: int,
+    session: AsyncSession = Depends(get_session),
+) -> FileResponse:
+    """
+    Отдаёт файл изображения по id. В Markdown вставляется URL вида /image-assets/{id}/file.
+    """
+    result = await session.execute(select(ImageAsset).where(ImageAsset.id == asset_id))
+    asset = result.scalars().one_or_none()
+    if asset is None:
+        raise HTTPException(status_code=404, detail="Image not found")
+    if ".." in asset.path or not asset.path.startswith("images/"):
+        raise HTTPException(status_code=404, detail="Invalid path")
+    path = IMAGES_DIR / Path(asset.path).name
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    media_type = None
+    suffix = path.suffix.lower()
+    if suffix in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"):
+        media_type = {
+            ".png": "image/png",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".gif": "image/gif",
+            ".webp": "image/webp",
+            ".svg": "image/svg+xml",
+        }.get(suffix)
+    return FileResponse(path, media_type=media_type)
+
+
+@router.get("/image-assets")
+async def list_image_assets(
+    session: AsyncSession = Depends(get_session),
+) -> list[dict[str, str | int | None]]:
+    """
+    Возвращает список зарегистрированных изображений (id, path, created_at) для выбора в редакторе.
+    """
+    result = await session.execute(select(ImageAsset).order_by(ImageAsset.created_at.desc()))
+    rows = result.scalars().all()
+    return [
+        {
+            "id": row.id,
+            "path": row.path,
+            "original_filename": row.original_filename,
+            "created_at": row.created_at.isoformat() if row.created_at else None,
+        }
+        for row in rows
+    ]

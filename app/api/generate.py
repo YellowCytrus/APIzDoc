@@ -5,14 +5,19 @@ GET  /profiles/{profile_id}/preamble     — текст преамбулы Typst
 """
 
 import logging
-from pathlib import PurePosixPath
+import re
+from pathlib import Path, PurePosixPath
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
 from fastapi.responses import PlainTextResponse, Response
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import get_profile_repository, get_title_page_repository
+from app.database import get_session
 from app.models.pydantic.page_editor import TitlePageContent
+from app.models.sqlalchemy.image_asset import ImageAsset
 from app.repositories.profile_repository import ProfileRepository
 from app.repositories.title_page_repository import TitlePageRepository
 from app.api.upload import IMAGES_DIR
@@ -68,6 +73,38 @@ async def get_preamble(
     return PlainTextResponse(build_typst_preamble(profile))
 
 
+async def _resolve_image_asset_urls(
+    typst_source: str, session: AsyncSession
+) -> tuple[str, dict[str, bytes]]:
+    """Находит в typst image(\".../image-assets/{id}/file\") или image(\"image-assets/{id}/file\"), подгружает файлы по id, возвращает (исходник с путями, asset_files)."""
+    ids = list(
+        {
+            int(m.group(1))
+            for m in re.finditer(r'(?:https?://[^"]*?/)?image-assets/(\d+)/file', typst_source)
+        }
+    )
+    asset_files: dict[str, bytes] = {}
+    if ids:
+        result = await session.execute(select(ImageAsset).where(ImageAsset.id.in_(ids)))
+        assets = {a.id: a for a in result.scalars().all()}
+        for aid in ids:
+            asset = assets.get(aid)
+            if not asset:
+                continue
+            path_key = f"image-assets/{aid}/file"
+            file_path = IMAGES_DIR / Path(asset.path).name
+            if file_path.is_file():
+                asset_files[path_key] = file_path.read_bytes()
+    modified = typst_source
+    for m in re.finditer(
+        r'image\s*\(\s*"(https?://[^"]*?/image-assets/(\d+)/file)"',
+        typst_source,
+    ):
+        full_url, id_str = m.group(1), m.group(2)
+        modified = modified.replace(full_url, f"image-assets/{id_str}/file", 1)
+    return modified, asset_files
+
+
 @router.post("/{profile_id}/generate-pdf", response_class=Response)
 async def generate_pdf(
     profile_id: int,
@@ -77,6 +114,7 @@ async def generate_pdf(
     ),
     repo: ProfileRepository = Depends(get_profile_repository),
     title_repo: TitlePageRepository = Depends(get_title_page_repository),
+    session: AsyncSession = Depends(get_session),
 ) -> Response:
     """
     Загрузка Markdown-файла; конвертация в Typst со стилями профиля и компиляция в PDF.
@@ -113,8 +151,12 @@ async def generate_pdf(
     parts.append(typst_body)
     full_typst = "\n".join(parts)
 
+    full_typst, asset_files = await _resolve_image_asset_urls(full_typst, session)
+
     try:
-        pdf_bytes = await compile_typst_to_pdf(full_typst, images_dir=IMAGES_DIR)
+        pdf_bytes = await compile_typst_to_pdf(
+            full_typst, images_dir=IMAGES_DIR, asset_files=asset_files or None
+        )
     except TypstCompileError as e:
         logger.exception("Typst compile failed: %s", e.stderr)
         raise HTTPException(status_code=500, detail="PDF compilation failed") from e

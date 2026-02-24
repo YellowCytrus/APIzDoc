@@ -1,5 +1,6 @@
 from app.models.sqlalchemy.profile import Profile
 from app.models.sqlalchemy.title_page import TitlePage
+from app.models.sqlalchemy.image_asset import ImageAsset
 from app.models.sqlalchemy.styles import (
     BulletListStyle,
     DocumentStyle,
@@ -22,6 +23,7 @@ from app.models.sqlalchemy.styles import (
 __all__ = [
     "Profile",
     "TitlePage",
+    "ImageAsset",
     "BulletListStyle",
     "DocumentStyle",
     "EquationStyle",

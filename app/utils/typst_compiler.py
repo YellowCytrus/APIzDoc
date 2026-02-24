@@ -26,17 +26,27 @@ def _extract_image_paths(typst_source: str) -> list[str]:
     return [p for p in matches if not p.startswith(("http://", "https://", "data:"))]
 
 
-def _compile_typst_to_pdf_sync(source: str, images_dir: Path | None = None) -> bytes:
+def _compile_typst_to_pdf_sync(
+    source: str,
+    images_dir: Path | None = None,
+    asset_files: dict[str, bytes] | None = None,
+) -> bytes:
     with tempfile.TemporaryDirectory() as tmpdir:
         root = Path(tmpdir)
         inp = root / "input.typ"
         out = root / "output.pdf"
         inp.write_text(source, encoding="utf-8")
 
-        # Копируем локальные изображения в tmpdir
+        if asset_files:
+            for rel_path, content in asset_files.items():
+                if ".." in rel_path:
+                    continue
+                dst = root / rel_path
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                dst.write_bytes(content)
+
         if images_dir is not None and images_dir.exists():
             for rel_path in _extract_image_paths(source):
-                # Поддержка только путей images/xxx, без path traversal
                 if not rel_path.startswith("images/") or ".." in rel_path:
                     continue
                 src_file = images_dir / Path(rel_path).name
@@ -70,8 +80,12 @@ def _compile_typst_to_pdf_sync(source: str, images_dir: Path | None = None) -> b
 async def compile_typst_to_pdf(
     source: str,
     images_dir: Path | None = None,
+    asset_files: dict[str, bytes] | None = None,
 ) -> bytes:
     """Компилирует исходник Typst в байты PDF. При ошибке выбрасывает TypstCompileError.
-    images_dir: корень проекта, откуда берутся файлы images/... (по умолчанию None)."""
+    images_dir: корень проекта, откуда берутся файлы images/...
+    asset_files: пути вида image-assets/{id}/file -> байты (для URL по id)."""
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, lambda: _compile_typst_to_pdf_sync(source, images_dir))
+    return await loop.run_in_executor(
+        None, lambda: _compile_typst_to_pdf_sync(source, images_dir, asset_files)
+    )
