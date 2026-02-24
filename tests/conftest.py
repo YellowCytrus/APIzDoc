@@ -49,9 +49,7 @@ async def _check_db_connection():
             database="postgres",
             timeout=2,
         )
-        db_exists = await conn.fetchval(
-            "SELECT 1 FROM pg_database WHERE datname = $1", database
-        )
+        db_exists = await conn.fetchval("SELECT 1 FROM pg_database WHERE datname = $1", database)
         if not db_exists:
             await conn.execute(f'CREATE DATABASE "{database}"')
         await conn.close()
