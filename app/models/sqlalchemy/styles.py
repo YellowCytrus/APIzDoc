@@ -56,7 +56,7 @@ class TextOverrideStyle(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     # Note: no profile_id - referenced by element tables via text_override_style_id
-    font: Mapped[str] = mapped_column(String(255), nullable=False, default="libertinus serif")
+    font: Mapped[str] = mapped_column(String(255), nullable=False, default="Merriweather")
     font_size: Mapped[float] = mapped_column(Float, nullable=False, default=12.0)
     weight: Mapped[str] = mapped_column(String(32), nullable=False, default="regular")
     style: Mapped[str] = mapped_column(String(32), nullable=False, default="normal")
