@@ -9,6 +9,8 @@ export interface FieldDef {
   step?: number;
   unit?: string;
   options?: { value: string; label: string }[];
+  placeholder?: string;
+  hint?: string;
 }
 
 export interface TabLeaf {
@@ -786,6 +788,13 @@ export const STYLE_TAB_TREE: TabNode[] = [
         key: 'outlined',
         label: 'В списке фигур',
         type: 'boolean',
+      },
+      {
+        key: 'caption_template',
+        label: 'Шаблон для подписи',
+        type: 'string',
+        placeholder: 'Рисунок {h1}.{N} --- {content}',
+        hint: 'В шаблоне можно использовать: {h1}–{h6} — номер заголовка уровня 1–6, {N} — номер рисунка, {content} — текст подписи.',
       },
     ],
   },

@@ -97,14 +97,14 @@ _SFU_STU_TITLE_TYPST = r"""
 }
 
 #let institute-name = "Институт космических и информационных технологий"
-#let department-name = "Программная инженерия"
-#let work-type = "ОТЧЕТ О ПРАКТИЧЕСКОЙ РАБОТЕ №10"
-#let work-theme = "Проектирование базы данных и ее реализация в среде СУБД PostgreSQL"
+#let department-name = "Информационные системы и технологии"
+#let work-type = "ОТЧЕТ О ПРАКТИЧЕСКОЙ РАБОТЕ №2"
+#let work-theme = "Составление базы данных"
 #let teacher-name = "Пахомова К.И."
 #let student-group = "КИ23-14Б"
 #let student-id = "032319377"
 #let student-name = "К. Д. Буданов"
-#let city-year = "Красноярск 2025"
+#let city-year = "Красноярск 2026"
 
 #align(center, [
   Министерство науки и высшего образования РФ \

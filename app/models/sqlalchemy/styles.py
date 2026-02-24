@@ -153,6 +153,9 @@ class FigureStyle(TextOverrideMixin, Base):
     gap: Mapped[float] = mapped_column(Float, nullable=False, default=0.65)
     outlined: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     fit: Mapped[str] = mapped_column(String(32), nullable=False, default="cover")
+    caption_template: Mapped[Optional[str]] = mapped_column(
+        String(256), nullable=True, default=None
+    )
     text_override_style_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("text_override_styles.id", ondelete="SET NULL"),
         nullable=True,

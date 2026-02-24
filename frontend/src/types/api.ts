@@ -76,6 +76,7 @@ export interface FigureStyles {
   gap: number;
   outlined: boolean;
   fit: string;
+  caption_template?: string | null;
   text_override: TextOverrideStyles | null;
 }
 
@@ -86,6 +87,7 @@ export interface FigureStylesUpdate {
   gap?: number;
   outlined?: boolean;
   fit?: string;
+  caption_template?: string | null;
 }
 
 export interface FootnoteStyles {
