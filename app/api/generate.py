@@ -61,6 +61,141 @@ def _content_disposition_attachment(filename: str) -> str:
     return disp
 
 
+# region TEMPORARY: SFU STU title page — remove this region to disable the option
+TITLE_PAGE_ID_SFU_STU = -1
+
+_SFU_STU_TITLE_TYPST = r"""
+#set page(
+  paper: "a4",
+  margin: (left: 3cm, right: 1.5cm, top: 2cm, bottom: 2cm),
+  numbering: none,
+  header: none,
+  footer: none,
+)
+
+#set text(
+  font: ("Times New Roman", "DejaVu Serif", "Libertinus Serif"),
+  size: 14pt,
+  lang: "ru",
+)
+
+#let labeled-block(content, label) = {
+  align(center, [
+    #block(
+      width: 15cm,
+      inset: 0pt,
+      [
+        #content
+        #v(-14pt)
+        #line(length: 100%, stroke: 0.5pt)
+        #v(-17pt)
+        #text(size: 10pt, fill: black)[#label]
+      ]
+    )
+    #v(4pt)
+  ])
+}
+
+#let institute-name = "Институт космических и информационных технологий"
+#let department-name = "Программная инженерия"
+#let work-type = "ОТЧЕТ О ПРАКТИЧЕСКОЙ РАБОТЕ №10"
+#let work-theme = "Проектирование базы данных и ее реализация в среде СУБД PostgreSQL"
+#let teacher-name = "Пахомова К.И."
+#let student-group = "КИ23-14Б"
+#let student-id = "032319377"
+#let student-name = "К. Д. Буданов"
+#let city-year = "Красноярск 2025"
+
+#align(center, [
+  Министерство науки и высшего образования РФ \
+  Федеральное государственное автономное \
+  образовательное учреждение высшего образования \
+  *"СИБИРСКИЙ ФЕДЕРАЛЬНЫЙ УНИВЕРСИТЕТ"*
+])
+
+#v(1cm)
+
+#labeled-block(institute-name, "институт")
+#labeled-block(department-name, "кафедра")
+
+#v(3cm)
+
+#align(center, [*#work-type*])
+#labeled-block(work-theme, "тема")
+
+#v(1.3fr)
+
+#table(
+  columns: (2fr, 1fr, 1fr),
+  inset: 0pt,
+  stroke: none,
+  align: horizon,
+
+  [Преподаватель],
+  [
+    #block(height: 1.5cm, [
+      #align(center, [
+        #v(22pt)
+        #line(length: 80%, stroke: 0.5pt)
+        #v(-17pt)
+        #text(size: 10pt)[подпись, дата]
+      ])
+    ])
+  ],
+  [
+    #block(height: 1.5cm, [
+      #align(center, [
+        #v(10pt)
+        #teacher-name
+        #v(-15pt)
+        #line(length: 100%, stroke: 0.5pt)
+        #v(-17pt)
+        #text(size: 10pt)[инициалы, фамилия]
+      ])
+    ])
+  ],
+
+  [#h(-28pt)
+  Студент
+   #box(
+     stroke: (bottom: 0.5pt),
+     inset: 0pt,
+     [#student-group, #student-id]
+   )
+   #v(-17pt)
+   #text(size: 10pt)[номер группы, зачетной книжки]
+  ],
+  [
+    #block(height: 1.5cm, [
+      #align(center, [
+        #v(10.5pt)
+        #line(length: 80%, stroke: 0.5pt)
+        #v(-17pt)
+        #text(size: 10pt)[подпись, дата]
+      ])
+    ])
+  ],
+  [
+    #block(height: 1.5cm, [
+      #align(center, [
+        #v(-2pt)
+        #student-name
+        #v(-15pt)
+        #line(length: 100%, stroke: 0.5pt)
+        #v(-17pt)
+        #text(size: 10pt)[инициалы, фамилия]
+      ])
+    ])
+  ],
+)
+
+#v(1.5fr)
+
+#align(center, city-year)
+"""
+# endregion
+
+
 @router.get("/{profile_id}/preamble", response_class=PlainTextResponse)
 async def get_preamble(
     profile_id: int,
@@ -136,18 +271,21 @@ async def generate_pdf(
 
     parts: list[str] = [preamble]
     if title_page_id is not None:
-        title_page = await title_repo.get_by_id(title_page_id)
-        if title_page is None:
-            raise HTTPException(status_code=404, detail="Title page not found")
-        tc = TitlePageContent.model_validate(title_page.content)
-        parts.append(
-            generate_fragment(
-                tc.elements,
-                tc.paper,
-                tc.variables,
-                ignore_document_styles=tc.ignore_document_styles,
+        if title_page_id == TITLE_PAGE_ID_SFU_STU:  # TEMPORARY: see region above
+            parts.append(_SFU_STU_TITLE_TYPST.strip() + "\n#pagebreak()\n")
+        else:
+            title_page = await title_repo.get_by_id(title_page_id)
+            if title_page is None:
+                raise HTTPException(status_code=404, detail="Title page not found")
+            tc = TitlePageContent.model_validate(title_page.content)
+            parts.append(
+                generate_fragment(
+                    tc.elements,
+                    tc.paper,
+                    tc.variables,
+                    ignore_document_styles=tc.ignore_document_styles,
+                )
             )
-        )
     parts.append(typst_body)
     full_typst = "\n".join(parts)
 
@@ -199,18 +337,21 @@ async def export_typ(
     preamble = build_typst_preamble(profile)
     parts: list[str] = [preamble]
     if title_page_id is not None:
-        title_page = await title_repo.get_by_id(title_page_id)
-        if title_page is None:
-            raise HTTPException(status_code=404, detail="Title page not found")
-        tc = TitlePageContent.model_validate(title_page.content)
-        parts.append(
-            generate_fragment(
-                tc.elements,
-                tc.paper,
-                tc.variables,
-                ignore_document_styles=tc.ignore_document_styles,
+        if title_page_id == TITLE_PAGE_ID_SFU_STU:  # TEMPORARY: see region above
+            parts.append(_SFU_STU_TITLE_TYPST.strip() + "\n#pagebreak()\n")
+        else:
+            title_page = await title_repo.get_by_id(title_page_id)
+            if title_page is None:
+                raise HTTPException(status_code=404, detail="Title page not found")
+            tc = TitlePageContent.model_validate(title_page.content)
+            parts.append(
+                generate_fragment(
+                    tc.elements,
+                    tc.paper,
+                    tc.variables,
+                    ignore_document_styles=tc.ignore_document_styles,
+                )
             )
-        )
     parts.append(typst_body)
     full_typst = "\n".join(parts)
 

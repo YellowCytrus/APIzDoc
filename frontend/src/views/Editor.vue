@@ -14,6 +14,9 @@ interface TitlePageItem {
   name: string;
 }
 
+// TEMPORARY: built-in SFU STU title; remove this constant and the option below to disable
+const SFU_STU_TITLE_PAGE_ID = -1;
+
 const profilesStore = useProfilesStore();
 const editorStore = useEditorStore();
 const titlePages = ref<TitlePageItem[]>([]);
@@ -208,6 +211,8 @@ onMounted(async () => {
           @change="editorStore.setTitlePageId(($event.target as HTMLSelectElement).value ? +(($event.target as HTMLSelectElement).value) : null)"
         >
           <option value="">Без титульника</option>
+          <!-- TEMPORARY: SFU STU title; remove option and SFU_STU_TITLE_PAGE_ID to disable -->
+          <option :value="SFU_STU_TITLE_PAGE_ID">СФУ СТУ</option>
           <option v-for="p in titlePages" :key="p.id" :value="p.id">
             {{ p.name }}
           </option>
