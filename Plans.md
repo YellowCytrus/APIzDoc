@@ -11,6 +11,7 @@
  - [ ] Устранить потенциальный path traversal в file.filename
  - [ ] app/api/elements/factory.py (17): ElementDescriptor[Any, Any, Any] : Убрать Any вместо дженериков, такая же тема в дескрипторах
  - [ ] Не понимаю что происходит в app/utils/typst_preamble.py
+ - [ ] В app/api/upload.py стр.24 зачем то разрешены gif
 
 # Превью
 
@@ -26,6 +27,8 @@
  - [ ] Подсветка ошибок + подсказки к ним
  - [ ] Добавить опции для абзаца: first-line-indent и amount (в api и в frontend)
  - [ ] Висячие отступы для списков
+ - [ ] Эффект для DragOver в frontend/src/components/MdEditor.vue
+ - [ ] Смена темы md-editor-v3 (нативно много всяких настроек есть) через gui
 
 
 # Технические
