@@ -51,17 +51,17 @@ async def run_async_migrations() -> None:
     url = config.get_main_option("sqlalchemy.url")
     connectable = create_async_engine(url, poolclass=pool.NullPool)
 
-    # Retry connection (Docker DNS may not resolve "db" on first second)
+    # Retry connection (Docker DNS may not resolve "db" immediately after container start)
     last_err = None
-    for attempt in range(5):
+    for attempt in range(12):
         try:
             async with connectable.connect() as connection:
                 await connection.run_sync(do_run_migrations)
             break
         except Exception as e:
             last_err = e
-            if attempt < 4:
-                await asyncio.sleep(2)
+            if attempt < 11:
+                await asyncio.sleep(3)
             else:
                 raise last_err from None
 
