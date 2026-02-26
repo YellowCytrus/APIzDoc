@@ -5,6 +5,7 @@ Typst использует строки в двойных кавычках; эк
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -32,6 +33,103 @@ def _typst_str(s: str) -> str:
     """Форматирует строку Python как литерал строки Typst (в двойных кавычках)."""
     escaped = s.replace("\\", "\\\\").replace('"', '\\"')
     return f'"{escaped}"'
+
+
+_CAPTION_PLACEHOLDER_RE = re.compile(r"\{([h][1-6]|[N]|content)\}", re.IGNORECASE)
+
+
+def _parse_caption_template(template: str) -> list[tuple[str, str]]:
+    """Parse caption template into segments: ('literal', s) or ('placeholder', 'h1'|'h2'|...|'N'|'content')."""
+    segments: list[tuple[str, str]] = []
+    last_end = 0
+    for m in _CAPTION_PLACEHOLDER_RE.finditer(template):
+        if m.start() > last_end:
+            segments.append(("literal", template[last_end : m.start()]))
+        raw = m.group(1).lower()
+        if raw == "n":
+            segments.append(("placeholder", "N"))
+        else:
+            segments.append(("placeholder", raw))
+        last_end = m.end()
+    if last_end < len(template):
+        segments.append(("literal", template[last_end:]))
+    return segments
+
+
+def _figure_caption_block(template: str) -> list[str]:
+    """Generate Typst lines for custom figure caption from template (placeholders {h1}..{h6}, {N}, {content})."""
+    segments = _parse_caption_template(template)
+    levels_used = set()
+    has_n = False
+    has_content = False
+    for kind, value in segments:
+        if kind == "placeholder":
+            if value in ("h1", "h2", "h3", "h4", "h5", "h6"):
+                levels_used.add(int(value[1]))
+            elif value == "N":
+                has_n = True
+            elif value == "content":
+                has_content = True
+
+    if not levels_used and not has_n:
+        return []
+
+    lines: list[str] = []
+    # Counter declarations
+    for k in sorted(levels_used):
+        lines.append(f'#let fig_h{k} = counter("figure-h{k}")')
+    if has_n:
+        lines.append('#let fig_n = counter("figure-n")')
+
+    # On heading level k: step fig_hk, reset deeper levels and fig_n
+    for k in sorted(levels_used):
+        resets: list[str] = []
+        for j in sorted(levels_used):
+            if j > k:
+                resets.append(f"fig_h{j}.update(1)")
+        if has_n:
+            resets.append("fig_n.update(1)")
+        reset_str = "\n  ".join(resets) if resets else ""
+        block = f"fig_h{k}.step()"
+        if reset_str:
+            block += "\n  " + reset_str
+        lines.append(f"#show heading.where(level: {k}): it => context {{\n  {block}\n  it\n}}")
+
+    lines.append("#set figure(numbering: none)")
+
+    # let bindings for display
+    let_bindings: list[str] = []
+    for k in sorted(levels_used):
+        let_bindings.append(f'let h{k} = fig_h{k}.display("1")')
+    if has_n:
+        let_bindings.append('let n = fig_n.display("1")')
+
+    def literal_to_content(s: str) -> str:
+        """Escape literal for Typst content []: # -> #hash. Avoid quoted strings so lang: \"ru\" does not render \" as guillemets."""
+        return s.replace("#", "#hash")
+
+    content_parts: list[str] = []
+    for kind, value in segments:
+        if kind == "literal":
+            if value == ".":
+                content_parts.append("#str.from-unicode(46)")
+            else:
+                content_parts.append(literal_to_content(value))
+        elif value == "content":
+            content_parts.append("#it.body")
+        elif value == "N":
+            content_parts.append("#n")
+        elif value in ("h1", "h2", "h3", "h4", "h5", "h6"):
+            content_parts.append(f"#{value}")
+    if not has_content:
+        content_parts.append(" #it.body")
+
+    caption_content = "".join(content_parts)
+    caption_inner = ";\n  ".join(let_bindings) + "\n  [ " + caption_content + " ]"
+    lines.append(
+        "#show figure.caption: it => context {\n  fig_n.step()\n  " + caption_inner + "\n}"
+    )
+    return lines
 
 
 # Шрифты, отсутствующие в Typst → встроенные аналоги
@@ -183,6 +281,9 @@ def _figure_line(e: FigureStyle) -> str:
         fig_args.append("outlined: false")
     if fig_args:
         parts.append(f"#set figure({', '.join(fig_args)})")
+    template = (e.caption_template or "").strip()
+    if template:
+        parts.extend(_figure_caption_block(template))
     return "\n".join(parts)
 
 
@@ -335,7 +436,7 @@ def _outline_line(e: OutlineStyle) -> str:
 
 
 def _heading_level_line(hl: "HeadingLevelStyle") -> str:
-    """Per-level: set text (и опц. set block). Возвращаем it — без создания нового heading."""
+    """Per-level: set text (и опц. set block). При break_before — pagebreak(weak: true) перед заголовком."""
     level = hl.level
     parts: list[str] = []
 
@@ -348,9 +449,14 @@ def _heading_level_line(hl: "HeadingLevelStyle") -> str:
         text_args = _text_override_to_typst_args(hl.text_override_style)
         parts.append(f"set text({', '.join(text_args)})")
 
+    body = "; ".join(parts)
+    if hl.break_before:
+        # Inside [ ] we're in content mode: each statement must be prefixed with #
+        body_code = "; ".join(f"#{p}" for p in parts) if parts else ""
+        inner = "#pagebreak(weak: true); " + (f"{body_code}; " if body_code else "") + "#it"
+        return f"#show heading.where(level: {level}): it => [ {inner} ]"
     if not parts:
         return ""
-    body = "; ".join(parts)
     return f"#show heading.where(level: {level}): it => {{ {body}; it }}"
 
 

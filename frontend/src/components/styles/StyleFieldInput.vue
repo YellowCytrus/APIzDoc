@@ -67,13 +67,15 @@ function updateMarker(index: number, value: string) {
     </div>
 
     <!-- String: text input -->
-    <div v-else-if="field.type === 'string'">
+    <div v-else-if="field.type === 'string'" class="field-string-wrap">
       <input
         type="text"
         :value="modelValue ?? ''"
+        :placeholder="field.placeholder"
         class="field-text"
         @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
       />
+      <p v-if="field.hint" class="field-hint">{{ field.hint }}</p>
     </div>
 
     <!-- Select: pill-style selector -->
@@ -210,6 +212,19 @@ function updateMarker(index: number, value: string) {
 .field-text:focus {
   outline: none;
   border-color: #3b82f6;
+}
+
+.field-string-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.field-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #71717a;
+  line-height: 1.3;
 }
 
 .field-pills {

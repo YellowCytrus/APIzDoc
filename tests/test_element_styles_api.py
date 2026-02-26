@@ -59,3 +59,72 @@ async def test_element_styles_404_for_nonexistent_profile(client):
     assert resp.status_code == 404
     resp = await client.patch("/profiles/99999/bullet_list", json={"tight": True})
     assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Default values: GET without prior POST returns ORM defaults (regression guard)
+# ---------------------------------------------------------------------------
+
+
+async def test_bullet_list_default_values(client):
+    """First GET creates row with ORM defaults."""
+    create = await client.post("/profiles", json={"name": f"P {uuid.uuid4().hex[:8]}"})
+    pid = create.json()["id"]
+    resp = await client.get(f"/profiles/{pid}/bullet_list")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["tight"] is True
+    assert data["marker"] == ["- ", "‣", "–"]
+    assert data["spacing"] == "auto"
+    assert data["indent"] == 0.0
+    assert data["body_indent"] == 0.5
+
+
+async def test_document_default_values(client):
+    """Document style defaults: font, line_spacing, justify."""
+    create = await client.post("/profiles", json={"name": f"P {uuid.uuid4().hex[:8]}"})
+    pid = create.json()["id"]
+    resp = await client.get(f"/profiles/{pid}/document")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["font"] == "Merriweather"
+    assert data["font_size"] == 12.0
+    assert data["line_spacing"] == 1.2
+    assert data["justify"] is False
+
+
+async def test_page_default_values(client):
+    """Page style defaults: paper, columns, numbering."""
+    create = await client.post("/profiles", json={"name": f"P {uuid.uuid4().hex[:8]}"})
+    pid = create.json()["id"]
+    resp = await client.get(f"/profiles/{pid}/page")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["paper"] == "a4"
+    assert data["columns"] == 1
+    assert data["numbering"] == "none"
+    assert data["flipped"] is False
+
+
+async def test_figure_default_values(client):
+    """Figure style defaults: width, placement, outlined, fit."""
+    create = await client.post("/profiles", json={"name": f"P {uuid.uuid4().hex[:8]}"})
+    pid = create.json()["id"]
+    resp = await client.get(f"/profiles/{pid}/figure")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["width"] == 1.0
+    assert data["placement"] == "none"
+    assert data["outlined"] is True
+    assert data["fit"] == "cover"
+
+
+async def test_par_default_values(client):
+    """Par style defaults: spacing, linebreaks."""
+    create = await client.post("/profiles", json={"name": f"P {uuid.uuid4().hex[:8]}"})
+    pid = create.json()["id"]
+    resp = await client.get(f"/profiles/{pid}/par")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["spacing"] == 1.0
+    assert data["linebreaks"] == "auto"

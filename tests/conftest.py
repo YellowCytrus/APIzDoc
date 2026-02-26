@@ -4,10 +4,12 @@ Set POSTGRES_* env before import so app uses test database.
 """
 
 import os
+import subprocess
 from collections.abc import AsyncGenerator
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # Use test DB before any app imports
@@ -59,6 +61,32 @@ async def _check_db_connection():
         )
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _run_migrations(_check_db_connection):
+    """Apply Alembic migrations to test DB so schema matches current models."""
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    result = subprocess.run(
+        ["uv", "run", "alembic", "upgrade", "head"],
+        cwd=root,
+        env=os.environ.copy(),
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        pytest.skip(f"Миграции не применились к тестовой БД: {result.stderr or result.stdout}")
+
+
+@pytest.fixture(scope="session", autouse=True)
+async def _ensure_schema(_run_migrations):
+    """Create any missing tables from ORM (migrations may not create base tables)."""
+    engine = create_async_engine(TEST_DATABASE_URL, future=True)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    finally:
+        await engine.dispose()
+
+
 # Test DB: same URL as app would use (env set above)
 TEST_DATABASE_URL = (
     f"postgresql+asyncpg://{os.environ.get('POSTGRES_USER', 'postgres')}:"
@@ -90,9 +118,11 @@ def test_session_factory(test_engine):
 
 @pytest.fixture(scope="function", autouse=True)
 async def _setup_db(test_engine):
-    """Create tables before each test. create_all is idempotent."""
+    """Clean all tables before each test (schema from Alembic in _run_migrations)."""
     async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        tables = [t.name for t in Base.metadata.sorted_tables]
+        if tables:
+            await conn.execute(text("TRUNCATE " + ", ".join(tables) + " RESTART IDENTITY CASCADE"))
 
 
 @pytest.fixture
@@ -110,10 +140,6 @@ def _test_get_session(test_session_factory):
                 raise
 
     return _get
-
-
-# Note: Tests use unique data to avoid conflicts.
-# For cleanup, run: PGPASSWORD=postgres psql -h localhost -U postgres -d pizdo_test -c "TRUNCATE ... CASCADE;"
 
 
 @pytest.fixture

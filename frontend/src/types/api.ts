@@ -76,6 +76,7 @@ export interface FigureStyles {
   gap: number;
   outlined: boolean;
   fit: string;
+  caption_template?: string | null;
   text_override: TextOverrideStyles | null;
 }
 
@@ -86,6 +87,7 @@ export interface FigureStylesUpdate {
   gap?: number;
   outlined?: boolean;
   fit?: string;
+  caption_template?: string | null;
 }
 
 export interface FootnoteStyles {
@@ -226,6 +228,7 @@ export interface HeadingLevelStyles {
   outlined: boolean;
   bookmarked: string;
   offset: number;
+  break_before: boolean;
   text_override: TextOverrideStyles | null;
 }
 
@@ -233,6 +236,7 @@ export interface HeadingLevelStylesUpdate {
   outlined?: boolean;
   bookmarked?: string;
   offset?: number;
+  break_before?: boolean;
   text_override?: TextOverrideStyles | null;
 }
 

@@ -20,6 +20,11 @@ class FigureStyles(BaseModel):
         "cover",
         description="Способ подгонки изображения",
     )
+    caption_template: Optional[str] = Field(
+        None,
+        max_length=256,
+        description="Шаблон подписи: {h1}–{h6}, {N}, {content}",
+    )
     text_override: Optional[TextOverrideStyles] = None
 
 
@@ -30,4 +35,5 @@ class FigureStylesUpdate(BaseModel):
     gap: Optional[float] = Field(None, ge=0.0)
     outlined: Optional[bool] = None
     fit: Optional[Literal["cover", "contain", "stretch"]] = None
+    caption_template: Optional[str] = Field(None, max_length=256)
     text_override: Optional[TextOverrideStylesUpdate | dict] = None
