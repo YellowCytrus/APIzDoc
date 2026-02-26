@@ -228,6 +228,7 @@ export interface HeadingLevelStyles {
   outlined: boolean;
   bookmarked: string;
   offset: number;
+  break_before: boolean;
   text_override: TextOverrideStyles | null;
 }
 
@@ -235,6 +236,7 @@ export interface HeadingLevelStylesUpdate {
   outlined?: boolean;
   bookmarked?: string;
   offset?: number;
+  break_before?: boolean;
   text_override?: TextOverrideStyles | null;
 }
 
