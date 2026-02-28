@@ -414,6 +414,7 @@ export const STYLE_TAB_TREE: TabNode[] = [
         elementKey: 'heading_1',
         hasTextOverride: true,
         fields: [
+          { key: 'break_before', label: 'С новой страницы', type: 'boolean' },
           { key: 'outlined', label: 'В оглавлении', type: 'boolean' },
           {
             key: 'bookmarked',
@@ -434,6 +435,7 @@ export const STYLE_TAB_TREE: TabNode[] = [
         elementKey: 'heading_2',
         hasTextOverride: true,
         fields: [
+          { key: 'break_before', label: 'С новой страницы', type: 'boolean' },
           { key: 'outlined', label: 'В оглавлении', type: 'boolean' },
           {
             key: 'bookmarked',
@@ -454,6 +456,7 @@ export const STYLE_TAB_TREE: TabNode[] = [
         elementKey: 'heading_3',
         hasTextOverride: true,
         fields: [
+          { key: 'break_before', label: 'С новой страницы', type: 'boolean' },
           { key: 'outlined', label: 'В оглавлении', type: 'boolean' },
           {
             key: 'bookmarked',
@@ -474,6 +477,7 @@ export const STYLE_TAB_TREE: TabNode[] = [
         elementKey: 'heading_4',
         hasTextOverride: true,
         fields: [
+          { key: 'break_before', label: 'С новой страницы', type: 'boolean' },
           { key: 'outlined', label: 'В оглавлении', type: 'boolean' },
           {
             key: 'bookmarked',
@@ -494,6 +498,7 @@ export const STYLE_TAB_TREE: TabNode[] = [
         elementKey: 'heading_5',
         hasTextOverride: true,
         fields: [
+          { key: 'break_before', label: 'С новой страницы', type: 'boolean' },
           { key: 'outlined', label: 'В оглавлении', type: 'boolean' },
           {
             key: 'bookmarked',
@@ -514,6 +519,7 @@ export const STYLE_TAB_TREE: TabNode[] = [
         elementKey: 'heading_6',
         hasTextOverride: true,
         fields: [
+          { key: 'break_before', label: 'С новой страницы', type: 'boolean' },
           { key: 'outlined', label: 'В оглавлении', type: 'boolean' },
           {
             key: 'bookmarked',

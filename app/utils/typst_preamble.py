@@ -436,7 +436,7 @@ def _outline_line(e: OutlineStyle) -> str:
 
 
 def _heading_level_line(hl: "HeadingLevelStyle") -> str:
-    """Per-level: set text (и опц. set block). Возвращаем it — без создания нового heading."""
+    """Per-level: set text (и опц. set block). При break_before — pagebreak(weak: true) перед заголовком."""
     level = hl.level
     parts: list[str] = []
 
@@ -449,9 +449,14 @@ def _heading_level_line(hl: "HeadingLevelStyle") -> str:
         text_args = _text_override_to_typst_args(hl.text_override_style)
         parts.append(f"set text({', '.join(text_args)})")
 
+    body = "; ".join(parts)
+    if hl.break_before:
+        # Inside [ ] we're in content mode: each statement must be prefixed with #
+        body_code = "; ".join(f"#{p}" for p in parts) if parts else ""
+        inner = "#pagebreak(weak: true); " + (f"{body_code}; " if body_code else "") + "#it"
+        return f"#show heading.where(level: {level}): it => [ {inner} ]"
     if not parts:
         return ""
-    body = "; ".join(parts)
     return f"#show heading.where(level: {level}): it => {{ {body}; it }}"
 
 

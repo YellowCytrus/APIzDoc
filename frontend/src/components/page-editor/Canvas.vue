@@ -22,81 +22,25 @@ import { usePageEditorStore } from "../../stores/pageEditor";
 import { useCanvas } from "../../composables/useCanvas";
 import type { Element, TextElement, VariableElement, LineElement } from "../../types/pageEditor";
 import { isVariableElement, isLineElement } from "../../types/pageEditor";
+import { snapPoint, snapBox } from "../../utils/snap";
+import {
+  PX_PER_MM,
+  TEXT_SIZE_PT,
+  TEXT_LEADING,
+  ptToPx,
+  resolveTextStyle,
+  buildCanvasFont,
+  getTextBoundsMm,
+} from "../../composables/useCanvasText";
 
-const PX_PER_MM = 2;
-const TEXT_SIZE_PT = 12;
 const VARIABLE_FONT_SIZE_PT = 10;
-const TEXT_LEADING = 1.2;
-const TEXT_FILL = "#000000";
 const VARIABLE_BOX_FILL = "#fafafa";
 
-function ptToPx(pt: number): number {
-  return pt * (25.4 / 72) * PX_PER_MM;
-}
 const TEXT_SIZE_PX = ptToPx(TEXT_SIZE_PT);
 const VARIABLE_FONT_SIZE_PX = ptToPx(VARIABLE_FONT_SIZE_PT);
 
-const WEIGHT_TO_CSS: Record<string, number | string> = {
-  thin: 100,
-  extralight: 200,
-  light: 300,
-  regular: 400,
-  medium: 500,
-  semibold: 600,
-  bold: 700,
-  extrabold: 800,
-  black: 900,
-};
-
-function fillToCss(fill: string | undefined): string {
-  if (!fill || !String(fill).trim()) return TEXT_FILL;
-  const s = String(fill).trim();
-  const lower = s.toLowerCase();
-  if (lower === "black") return "#000000";
-  if (lower === "white") return "#ffffff";
-  const rgbMatch = s.match(/rgb\s*\(\s*["']?#?([0-9a-fA-F]{3,6})["']?\s*\)/i);
-  if (rgbMatch?.[1]) {
-    const hex = rgbMatch[1];
-    return hex.length === 3 ? `#${hex[0]}${hex[0]}${hex[1]}${hex[1]}${hex[2]}${hex[2]}` : `#${hex}`;
-  }
-  if (s.startsWith("#") && /^#[0-9a-fA-F]{3,8}$/.test(s)) return s;
-  if (s.startsWith("rgb(")) return s;
-  return s;
-}
-
-function resolveTextStyle(
-  text_style: Record<string, unknown> | undefined,
-  defaultSizePt: number
-): { sizePx: number; font: string; fill: string; weight: string; style: string } {
-  const ts = text_style ?? {};
-  const sizePt = (ts.font_size as number) ?? defaultSizePt;
-  const font = (ts.font as string) || "Libertinus Serif";
-  const fill = fillToCss(ts.fill as string);
-  const weight = (ts.weight as string) ?? "regular";
-  const style = (ts.style as string) ?? "normal";
-  const fontFamily = font.toLowerCase().includes('libertinus')
-    ? `"Libertinus Serif", serif`
-    : `${font}, sans-serif`;
-  return {
-    sizePx: ptToPx(sizePt),
-    font: fontFamily,
-    fill,
-    weight: String(WEIGHT_TO_CSS[weight] ?? weight),
-    style,
-  };
-}
-
-function buildCanvasFont(resolved: { sizePx: number; font: string; weight: string; style: string }): string {
-  const parts: string[] = [];
-  if (resolved.style && resolved.style !== "normal") parts.push(resolved.style);
-  if (resolved.weight && resolved.weight !== "400") parts.push(String(resolved.weight));
-  parts.push(`${resolved.sizePx}px`);
-  parts.push(resolved.font);
-  return parts.join(" ");
-}
-
 const store = usePageEditorStore();
-const { elements, paper, selectedId, showGrid } = storeToRefs(store);
+const { elements, paper, selectedId, showGrid, snapEnabled, snapThresholdMm } = storeToRefs(store);
 
 const containerRef = ref<HTMLDivElement | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -109,6 +53,70 @@ const canvasHeight = computed(() => containerSize.value.height);
 
 const HANDLE_SIZE = 8;
 const HIT_PAD = 4;
+const MIN_VARIABLE_WIDTH_MM = 10;
+const MIN_VARIABLE_HEIGHT_LINES = 1;
+const VARIABLE_LINE_HEIGHT_MM = 5;
+
+interface ResizeState {
+  w: number;
+  h: number;
+  elementX: number;
+  elementY: number;
+}
+
+const handleTransformations: Record<
+  number,
+  (dx: number, dy: number, s: ResizeState) => ResizeState
+> = {
+  0: (dx, dy, { w, h, elementX, elementY }) => ({
+    elementX: elementX + dx,
+    elementY: elementY + dy,
+    w: Math.max(MIN_VARIABLE_WIDTH_MM, w - dx),
+    h: Math.max(MIN_VARIABLE_HEIGHT_LINES, h - dy / VARIABLE_LINE_HEIGHT_MM),
+  }),
+  1: (dx, dy, { w, h, elementX, elementY }) => ({
+    elementX,
+    elementY: elementY + dy,
+    w: Math.max(MIN_VARIABLE_WIDTH_MM, w + dx),
+    h: Math.max(MIN_VARIABLE_HEIGHT_LINES, h - dy / VARIABLE_LINE_HEIGHT_MM),
+  }),
+  2: (dx, dy, { w, h, elementX, elementY }) => ({
+    elementX,
+    elementY,
+    w: Math.max(MIN_VARIABLE_WIDTH_MM, w + dx),
+    h: Math.max(MIN_VARIABLE_HEIGHT_LINES, h + dy / VARIABLE_LINE_HEIGHT_MM),
+  }),
+  3: (dx, dy, { w, h, elementX, elementY }) => ({
+    elementX: elementX + dx,
+    elementY,
+    w: Math.max(MIN_VARIABLE_WIDTH_MM, w - dx),
+    h: Math.max(MIN_VARIABLE_HEIGHT_LINES, h + dy / VARIABLE_LINE_HEIGHT_MM),
+  }),
+  4: (_dx, dy, { w, h, elementX, elementY }) => ({
+    elementX,
+    elementY: elementY + dy,
+    w,
+    h: Math.max(MIN_VARIABLE_HEIGHT_LINES, h - dy / VARIABLE_LINE_HEIGHT_MM),
+  }),
+  5: (dx, _dy, { w, h, elementX, elementY }) => ({
+    elementX,
+    elementY,
+    w: Math.max(MIN_VARIABLE_WIDTH_MM, w + dx),
+    h,
+  }),
+  6: (_dx, dy, { w, h, elementX, elementY }) => ({
+    elementX,
+    elementY,
+    w,
+    h: Math.max(MIN_VARIABLE_HEIGHT_LINES, h + dy / VARIABLE_LINE_HEIGHT_MM),
+  }),
+  7: (dx, _dy, { w, h, elementX, elementY }) => ({
+    elementX: elementX + dx,
+    elementY,
+    w: Math.max(MIN_VARIABLE_WIDTH_MM, w - dx),
+    h,
+  }),
+};
 
 interface DragState {
   id: string;
@@ -118,22 +126,33 @@ interface DragState {
   startY_mm: number;
   startMouseX_mm?: number;
   startMouseY_mm?: number;
-  startElX_mm?: number;
-  startElY_mm?: number;
+  startElementX_mm?: number;
+  startElementY_mm?: number;
   startW?: number;
   startH?: number;
   startX1?: number;
   startY1?: number;
   startX2?: number;
   startY2?: number;
+  startWidth_mm?: number;
+  startHeight_mm?: number;
   endIndex?: number;
+  otherEndX?: number;
+  otherEndY?: number;
 }
 const dragState = ref<DragState | null>(null);
 const spacePressed = ref(false);
 
-function getElementBounds(e: Element): { x: number; y: number; w: number; h: number } {
+function getElementBounds(
+  e: Element,
+  ctx?: CanvasRenderingContext2D | null
+): { x: number; y: number; w: number; h: number } {
   if (e.type === "text") {
     const te = e as TextElement;
+    if (ctx) {
+      const { w, h } = getTextBoundsMm(te, ctx);
+      return { x: te.x_mm, y: te.y_mm, w, h };
+    }
     const resolved = resolveTextStyle(
       te.text_style as Record<string, unknown> | undefined,
       TEXT_SIZE_PT
@@ -144,7 +163,7 @@ function getElementBounds(e: Element): { x: number; y: number; w: number; h: num
   }
   if (e.type === "variable") {
     const ve = e as VariableElement;
-    return { x: ve.x_mm, y: ve.y_mm, w: ve.width_mm, h: ve.height_lines * 5 };
+    return { x: ve.x_mm, y: ve.y_mm, w: ve.width_mm, h: ve.height_lines * VARIABLE_LINE_HEIGHT_MM };
   }
   const le = e as LineElement;
   const minX = Math.min(le.x1_mm, le.x2_mm);
@@ -152,6 +171,51 @@ function getElementBounds(e: Element): { x: number; y: number; w: number; h: num
   const maxX = Math.max(le.x1_mm, le.x2_mm);
   const maxY = Math.max(le.y1_mm, le.y2_mm);
   return { x: minX, y: minY, w: Math.max(1, maxX - minX), h: Math.max(1, maxY - minY) };
+}
+
+function getSnapTargets(
+  excludeId: string,
+  ctx?: CanvasRenderingContext2D | null
+): { xTargets: number[]; yTargets: number[] } {
+  const { width: w, height: h } = paper.value;
+  const xTargets = [0, w / 2, w];
+  const yTargets = [0, h / 2, h];
+  for (const e of elements.value) {
+    if (e.id === excludeId) continue;
+    const b = getElementBounds(e, ctx);
+    xTargets.push(b.x, b.x + b.w / 2, b.x + b.w);
+    yTargets.push(b.y, b.y + b.h / 2, b.y + b.h);
+  }
+  return { xTargets, yTargets };
+}
+
+interface SnapOptions {
+  enabled: boolean;
+  excludeId: string;
+  ctx: CanvasRenderingContext2D | null;
+  threshold: number;
+}
+
+function snapPointIfNeeded(
+  x_mm: number,
+  y_mm: number,
+  options: SnapOptions
+): { x_mm: number; y_mm: number } {
+  if (!options.enabled) return { x_mm, y_mm };
+  const t = getSnapTargets(options.excludeId, options.ctx);
+  return snapPoint(x_mm, y_mm, t.xTargets, t.yTargets, options.threshold);
+}
+
+function snapBoxIfNeeded(
+  x_mm: number,
+  y_mm: number,
+  w_mm: number,
+  h_mm: number,
+  options: SnapOptions
+): { x_mm: number; y_mm: number } {
+  if (!options.enabled) return { x_mm, y_mm };
+  const t = getSnapTargets(options.excludeId, options.ctx);
+  return snapBox(x_mm, y_mm, w_mm, h_mm, t.xTargets, t.yTargets, options.threshold);
 }
 
 function hitTest(screenX: number, screenY: number): { element: Element; handleIndex?: number } | null {
@@ -200,7 +264,7 @@ function pointToLineDist(px: number, py: number, x1: number, y1: number, x2: num
 }
 
 function getResizeHandles(ve: VariableElement): [number, number][] {
-  const { x, y, w, h } = { x: ve.x_mm, y: ve.y_mm, w: ve.width_mm, h: ve.height_lines * 5 };
+  const { x, y, w, h } = { x: ve.x_mm, y: ve.y_mm, w: ve.width_mm, h: ve.height_lines * VARIABLE_LINE_HEIGHT_MM };
   return [
     [x, y], [x + w, y], [x + w, y + h], [x, y + h],
     [x + w / 2, y], [x + w, y + h / 2], [x + w / 2, y + h], [x, y + h / 2],
@@ -222,12 +286,21 @@ function onMouseDown(ev: MouseEvent) {
   const hit = hitTest(screenX, screenY);
   if (hit) {
     const e = hit.element;
+    const ctx = canvas.getContext("2d") ?? null;
     if (e.type === "line") {
       const le = e as LineElement;
       if (hit.handleIndex === 0) {
-        dragState.value = { id: e.id, kind: "line-end", endIndex: 0, startX_mm: le.x1_mm, startY_mm: le.y1_mm };
+        dragState.value = {
+          id: e.id, kind: "line-end", endIndex: 0,
+          startX_mm: le.x1_mm, startY_mm: le.y1_mm,
+          otherEndX: le.x2_mm, otherEndY: le.y2_mm,
+        };
       } else if (hit.handleIndex === 1) {
-        dragState.value = { id: e.id, kind: "line-end", endIndex: 1, startX_mm: le.x2_mm, startY_mm: le.y2_mm };
+        dragState.value = {
+          id: e.id, kind: "line-end", endIndex: 1,
+          startX_mm: le.x2_mm, startY_mm: le.y2_mm,
+          otherEndX: le.x1_mm, otherEndY: le.y1_mm,
+        };
       } else {
         dragState.value = {
           id: e.id, kind: "move",
@@ -242,23 +315,87 @@ function onMouseDown(ev: MouseEvent) {
         id: e.id, kind: "resize", handleIndex: hit.handleIndex,
         startX_mm: mousePaper.x_mm,
         startY_mm: mousePaper.y_mm,
-        startElX_mm: ve.x_mm, startElY_mm: ve.y_mm,
+        startElementX_mm: ve.x_mm, startElementY_mm: ve.y_mm,
         startW: ve.width_mm, startH: ve.height_lines,
       };
     } else {
       const el = e as TextElement | VariableElement;
+      const bounds = getElementBounds(e, ctx);
       dragState.value = {
         id: e.id, kind: "move",
         startX_mm: el.x_mm,
         startY_mm: el.y_mm,
         startMouseX_mm: mousePaper.x_mm,
         startMouseY_mm: mousePaper.y_mm,
+        startWidth_mm: bounds.w,
+        startHeight_mm: bounds.h,
       };
     }
     store.setSelected(e.id);
   } else {
     store.setSelected(null);
   }
+}
+
+function handlePan(screenX: number, screenY: number) {
+  movePan(screenX, screenY);
+}
+
+function handleMoveDrag(drag: DragState, x_mm: number, y_mm: number, snapOpts: SnapOptions) {
+  if (drag.startX1 != null && drag.startY1 != null && drag.startX2 != null && drag.startY2 != null) {
+    const x1 = drag.startX1 + (x_mm - drag.startX_mm);
+    const y1 = drag.startY1 + (y_mm - drag.startY_mm);
+    const x2 = drag.startX2 + (x_mm - drag.startX_mm);
+    const y2 = drag.startY2 + (y_mm - drag.startY_mm);
+    const centerX = (x1 + x2) / 2;
+    const centerY = (y1 + y2) / 2;
+    const snapped = snapPointIfNeeded(centerX, centerY, snapOpts);
+    const offsetX = snapped.x_mm - centerX;
+    const offsetY = snapped.y_mm - centerY;
+    store.updateLineEndpoints(drag.id, x1 + offsetX, y1 + offsetY, x2 + offsetX, y2 + offsetY);
+  } else if (drag.startWidth_mm != null && drag.startHeight_mm != null) {
+    const newX = drag.startX_mm + (x_mm - (drag.startMouseX_mm ?? drag.startX_mm));
+    const newY = drag.startY_mm + (y_mm - (drag.startMouseY_mm ?? drag.startY_mm));
+    const snapped = snapBoxIfNeeded(newX, newY, drag.startWidth_mm, drag.startHeight_mm, snapOpts);
+    store.updatePosition(drag.id, snapped.x_mm, snapped.y_mm);
+  }
+}
+
+function handleResizeDrag(drag: DragState, x_mm: number, y_mm: number, _snapOpts: SnapOptions) {
+  if (drag.handleIndex == null || drag.startW == null || drag.startH == null || drag.startElementX_mm == null || drag.startElementY_mm == null) return;
+  const dx = x_mm - drag.startX_mm;
+  const dy = y_mm - drag.startY_mm;
+  let state: ResizeState = {
+    w: drag.startW,
+    h: drag.startH,
+    elementX: drag.startElementX_mm,
+    elementY: drag.startElementY_mm,
+  };
+  const transform = handleTransformations[drag.handleIndex];
+  if (transform) {
+    state = transform(dx, dy, state);
+  }
+  store.updatePosition(drag.id, state.elementX, state.elementY);
+  store.updateSize(drag.id, state.w, state.h);
+}
+
+function handleLineEndDrag(drag: DragState, x_mm: number, y_mm: number, snapOpts: SnapOptions) {
+  if (drag.endIndex === undefined || drag.otherEndX == null || drag.otherEndY == null) return;
+  const snapped = snapPointIfNeeded(x_mm, y_mm, snapOpts);
+  if (drag.endIndex === 0) store.updateLineEndpoints(drag.id, snapped.x_mm, snapped.y_mm, drag.otherEndX, drag.otherEndY);
+  else store.updateLineEndpoints(drag.id, drag.otherEndX, drag.otherEndY, snapped.x_mm, snapped.y_mm);
+}
+
+type DragHandler = (drag: DragState, x_mm: number, y_mm: number, snapOpts: SnapOptions) => void;
+
+const dragHandlers: Record<DragState["kind"], DragHandler> = {
+  move: handleMoveDrag,
+  resize: handleResizeDrag,
+  "line-end": handleLineEndDrag,
+};
+
+function handleDrag(drag: DragState, x_mm: number, y_mm: number, snapOpts: SnapOptions) {
+  dragHandlers[drag.kind](drag, x_mm, y_mm, snapOpts);
 }
 
 function onMouseMove(ev: MouseEvent) {
@@ -268,59 +405,23 @@ function onMouseMove(ev: MouseEvent) {
   const screenX = ev.clientX - rect.left;
   const screenY = ev.clientY - rect.top;
   if (isPanning.value) {
-    movePan(screenX, screenY);
+    handlePan(screenX, screenY);
     redraw();
     return;
   }
   const drag = dragState.value;
-  if (drag) {
-    const { x_mm, y_mm } = screenToPaper(screenX, screenY);
-    if (drag.kind === "move") {
-      const el = elements.value.find((e) => e.id === drag.id);
-      if (!el) return;
-      if (el.type === "line") {
-        const dx = x_mm - drag.startX_mm;
-        const dy = y_mm - drag.startY_mm;
-        store.updateLineEndpoints(
-          drag.id,
-          (drag.startX1 ?? 0) + dx,
-          (drag.startY1 ?? 0) + dy,
-          (drag.startX2 ?? 0) + dx,
-          (drag.startY2 ?? 0) + dy
-        );
-      } else {
-        const newX = drag.startX_mm + (x_mm - (drag.startMouseX_mm ?? drag.startX_mm));
-        const newY = drag.startY_mm + (y_mm - (drag.startMouseY_mm ?? drag.startY_mm));
-        store.updatePosition(drag.id, newX, newY);
-      }
-    } else if (drag.kind === "resize" && drag.handleIndex != null && drag.startW != null && drag.startH != null && drag.startElX_mm != null && drag.startElY_mm != null) {
-      const dx = x_mm - drag.startX_mm;
-      const dy = y_mm - drag.startY_mm;
-      let w = drag.startW;
-      let h = drag.startH;
-      let ex = drag.startElX_mm;
-      let ey = drag.startElY_mm;
-      const hi = drag.handleIndex;
-      if (hi === 0) { ex += dx; ey += dy; w = Math.max(10, w - dx); h = Math.max(1, h - dy / 5); }
-      else if (hi === 1) { ey += dy; w = Math.max(10, w + dx); h = Math.max(1, h - dy / 5); }
-      else if (hi === 2) { w = Math.max(10, w + dx); h = Math.max(1, h + dy / 5); }
-      else if (hi === 3) { ex += dx; w = Math.max(10, w - dx); h = Math.max(1, h + dy / 5); }
-      else if (hi === 4) { ey += dy; h = Math.max(1, h - dy / 5); }
-      else if (hi === 5) { w = Math.max(10, w + dx); }
-      else if (hi === 6) { h = Math.max(1, h + dy / 5); }
-      else if (hi === 7) { ex += dx; w = Math.max(10, w - dx); }
-      store.updatePosition(drag.id, ex, ey);
-      store.updateSize(drag.id, w, h);
-    } else if (drag.kind === "line-end" && drag.endIndex !== undefined) {
-      const le = elements.value.find((e) => e.id === drag.id) as LineElement | undefined;
-      if (le) {
-        if (drag.endIndex === 0) store.updateLineEndpoints(drag.id, x_mm, y_mm, le.x2_mm, le.y2_mm);
-        else store.updateLineEndpoints(drag.id, le.x1_mm, le.y1_mm, x_mm, y_mm);
-      }
-    }
+  if (!drag) {
     redraw();
     return;
   }
+  const { x_mm, y_mm } = screenToPaper(screenX, screenY);
+  const snapOpts: SnapOptions = {
+    enabled: snapEnabled.value && !ev.altKey,
+    excludeId: drag.id,
+    ctx: canvasRef.value?.getContext("2d") ?? null,
+    threshold: snapThresholdMm.value,
+  };
+  handleDrag(drag, x_mm, y_mm, snapOpts);
   redraw();
 }
 
@@ -410,11 +511,10 @@ function drawElement(ctx: CanvasRenderingContext2D, e: Element) {
     ctx.font = buildCanvasFont(resolved);
     ctx.fillText(te.content, x, y + resolved.sizePx);
     if (e.id === selectedId.value) {
-      const m = ctx.measureText(te.content);
+      const b = getTextBoundsMm(te, ctx);
       ctx.strokeStyle = "#3b82f6";
       ctx.lineWidth = 2 / s;
-      const lineH = resolved.sizePx * TEXT_LEADING;
-      ctx.strokeRect(x, y, m.width + 4, lineH);
+      ctx.strokeRect(x, y, b.w * PX_PER_MM, b.h * PX_PER_MM);
     }
   } else if (e.type === "variable") {
     const ve = e as VariableElement;
@@ -425,7 +525,7 @@ function drawElement(ctx: CanvasRenderingContext2D, e: Element) {
     const x = ve.x_mm * PX_PER_MM;
     const y = ve.y_mm * PX_PER_MM;
     const w = ve.width_mm * PX_PER_MM;
-    const h = Math.max(resolved.sizePx * TEXT_LEADING, ve.height_lines * 5 * PX_PER_MM);
+    const h = Math.max(resolved.sizePx * TEXT_LEADING, ve.height_lines * VARIABLE_LINE_HEIGHT_MM * PX_PER_MM);
     ctx.fillStyle = VARIABLE_BOX_FILL;
     ctx.fillRect(x, y, w, h);
     ctx.fillStyle = resolved.fill;
@@ -486,9 +586,19 @@ function drawLineHandles(ctx: CanvasRenderingContext2D, le: LineElement) {
   }
 }
 
+function preventAlt(e: KeyboardEvent) {
+  if (e.key === "Alt") {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+  }
+}
+
 onMounted(() => {
   const container = containerRef.value;
   if (!container) return;
+  document.addEventListener("keydown", preventAlt, { capture: true });
+  document.addEventListener("keyup", preventAlt, { capture: true });
   const ro = new ResizeObserver((entries) => {
     const entry = entries[0];
     if (entry) {
@@ -520,6 +630,8 @@ onMounted(() => {
   window.addEventListener("keyup", keyUp);
   onUnmounted(() => {
     ro.disconnect();
+    document.removeEventListener("keydown", preventAlt, { capture: true });
+    document.removeEventListener("keyup", preventAlt, { capture: true });
     window.removeEventListener("keydown", keyDown);
     window.removeEventListener("keyup", keyUp);
   });
