@@ -22,81 +22,25 @@ import { usePageEditorStore } from "../../stores/pageEditor";
 import { useCanvas } from "../../composables/useCanvas";
 import type { Element, TextElement, VariableElement, LineElement } from "../../types/pageEditor";
 import { isVariableElement, isLineElement } from "../../types/pageEditor";
+import { snapPoint, snapBox } from "../../utils/snap";
+import {
+  PX_PER_MM,
+  TEXT_SIZE_PT,
+  TEXT_LEADING,
+  ptToPx,
+  resolveTextStyle,
+  buildCanvasFont,
+  getTextBoundsMm,
+} from "../../composables/useCanvasText";
 
-const PX_PER_MM = 2;
-const TEXT_SIZE_PT = 12;
 const VARIABLE_FONT_SIZE_PT = 10;
-const TEXT_LEADING = 1.2;
-const TEXT_FILL = "#000000";
 const VARIABLE_BOX_FILL = "#fafafa";
 
-function ptToPx(pt: number): number {
-  return pt * (25.4 / 72) * PX_PER_MM;
-}
 const TEXT_SIZE_PX = ptToPx(TEXT_SIZE_PT);
 const VARIABLE_FONT_SIZE_PX = ptToPx(VARIABLE_FONT_SIZE_PT);
 
-const WEIGHT_TO_CSS: Record<string, number | string> = {
-  thin: 100,
-  extralight: 200,
-  light: 300,
-  regular: 400,
-  medium: 500,
-  semibold: 600,
-  bold: 700,
-  extrabold: 800,
-  black: 900,
-};
-
-function fillToCss(fill: string | undefined): string {
-  if (!fill || !String(fill).trim()) return TEXT_FILL;
-  const s = String(fill).trim();
-  const lower = s.toLowerCase();
-  if (lower === "black") return "#000000";
-  if (lower === "white") return "#ffffff";
-  const rgbMatch = s.match(/rgb\s*\(\s*["']?#?([0-9a-fA-F]{3,6})["']?\s*\)/i);
-  if (rgbMatch?.[1]) {
-    const hex = rgbMatch[1];
-    return hex.length === 3 ? `#${hex[0]}${hex[0]}${hex[1]}${hex[1]}${hex[2]}${hex[2]}` : `#${hex}`;
-  }
-  if (s.startsWith("#") && /^#[0-9a-fA-F]{3,8}$/.test(s)) return s;
-  if (s.startsWith("rgb(")) return s;
-  return s;
-}
-
-function resolveTextStyle(
-  text_style: Record<string, unknown> | undefined,
-  defaultSizePt: number
-): { sizePx: number; font: string; fill: string; weight: string; style: string } {
-  const ts = text_style ?? {};
-  const sizePt = (ts.font_size as number) ?? defaultSizePt;
-  const font = (ts.font as string) || "Libertinus Serif";
-  const fill = fillToCss(ts.fill as string);
-  const weight = (ts.weight as string) ?? "regular";
-  const style = (ts.style as string) ?? "normal";
-  const fontFamily = font.toLowerCase().includes('libertinus')
-    ? `"Libertinus Serif", serif`
-    : `${font}, sans-serif`;
-  return {
-    sizePx: ptToPx(sizePt),
-    font: fontFamily,
-    fill,
-    weight: String(WEIGHT_TO_CSS[weight] ?? weight),
-    style,
-  };
-}
-
-function buildCanvasFont(resolved: { sizePx: number; font: string; weight: string; style: string }): string {
-  const parts: string[] = [];
-  if (resolved.style && resolved.style !== "normal") parts.push(resolved.style);
-  if (resolved.weight && resolved.weight !== "400") parts.push(String(resolved.weight));
-  parts.push(`${resolved.sizePx}px`);
-  parts.push(resolved.font);
-  return parts.join(" ");
-}
-
 const store = usePageEditorStore();
-const { elements, paper, selectedId, showGrid } = storeToRefs(store);
+const { elements, paper, selectedId, showGrid, snapEnabled, snapThresholdMm } = storeToRefs(store);
 
 const containerRef = ref<HTMLDivElement | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -131,9 +75,16 @@ interface DragState {
 const dragState = ref<DragState | null>(null);
 const spacePressed = ref(false);
 
-function getElementBounds(e: Element): { x: number; y: number; w: number; h: number } {
+function getElementBounds(
+  e: Element,
+  ctx?: CanvasRenderingContext2D | null
+): { x: number; y: number; w: number; h: number } {
   if (e.type === "text") {
     const te = e as TextElement;
+    if (ctx) {
+      const { w, h } = getTextBoundsMm(te, ctx);
+      return { x: te.x_mm, y: te.y_mm, w, h };
+    }
     const resolved = resolveTextStyle(
       te.text_style as Record<string, unknown> | undefined,
       TEXT_SIZE_PT
@@ -152,6 +103,22 @@ function getElementBounds(e: Element): { x: number; y: number; w: number; h: num
   const maxX = Math.max(le.x1_mm, le.x2_mm);
   const maxY = Math.max(le.y1_mm, le.y2_mm);
   return { x: minX, y: minY, w: Math.max(1, maxX - minX), h: Math.max(1, maxY - minY) };
+}
+
+function getSnapTargets(
+  excludeId: string,
+  ctx?: CanvasRenderingContext2D | null
+): { xTargets: number[]; yTargets: number[] } {
+  const { width: w, height: h } = paper.value;
+  const xTargets = [0, w / 2, w];
+  const yTargets = [0, h / 2, h];
+  for (const e of elements.value) {
+    if (e.id === excludeId) continue;
+    const b = getElementBounds(e, ctx);
+    xTargets.push(b.x, b.x + b.w / 2, b.x + b.w);
+    yTargets.push(b.y, b.y + b.h / 2, b.y + b.h);
+  }
+  return { xTargets, yTargets };
 }
 
 function hitTest(screenX: number, screenY: number): { element: Element; handleIndex?: number } | null {
@@ -275,22 +242,38 @@ function onMouseMove(ev: MouseEvent) {
   const drag = dragState.value;
   if (drag) {
     const { x_mm, y_mm } = screenToPaper(screenX, screenY);
+    const snap = snapEnabled.value && !ev.altKey;
+    const thresh = snapThresholdMm.value;
+    const ctx = canvasRef.value?.getContext("2d") ?? null;
     if (drag.kind === "move") {
       const el = elements.value.find((e) => e.id === drag.id);
       if (!el) return;
       if (el.type === "line") {
-        const dx = x_mm - drag.startX_mm;
-        const dy = y_mm - drag.startY_mm;
-        store.updateLineEndpoints(
-          drag.id,
-          (drag.startX1 ?? 0) + dx,
-          (drag.startY1 ?? 0) + dy,
-          (drag.startX2 ?? 0) + dx,
-          (drag.startY2 ?? 0) + dy
-        );
+        const x1 = (drag.startX1 ?? 0) + (x_mm - drag.startX_mm);
+        const y1 = (drag.startY1 ?? 0) + (y_mm - drag.startY_mm);
+        const x2 = (drag.startX2 ?? 0) + (x_mm - drag.startX_mm);
+        const y2 = (drag.startY2 ?? 0) + (y_mm - drag.startY_mm);
+        if (snap) {
+          const cx = (x1 + x2) / 2;
+          const cy = (y1 + y2) / 2;
+          const t = getSnapTargets(drag.id, ctx);
+          const c = snapPoint(cx, cy, t.xTargets, t.yTargets, thresh);
+          const ox = c.x_mm - cx;
+          const oy = c.y_mm - cy;
+          store.updateLineEndpoints(drag.id, x1 + ox, y1 + oy, x2 + ox, y2 + oy);
+        } else {
+          store.updateLineEndpoints(drag.id, x1, y1, x2, y2);
+        }
       } else {
-        const newX = drag.startX_mm + (x_mm - (drag.startMouseX_mm ?? drag.startX_mm));
-        const newY = drag.startY_mm + (y_mm - (drag.startMouseY_mm ?? drag.startY_mm));
+        let newX = drag.startX_mm + (x_mm - (drag.startMouseX_mm ?? drag.startX_mm));
+        let newY = drag.startY_mm + (y_mm - (drag.startMouseY_mm ?? drag.startY_mm));
+        if (snap) {
+          const b = getElementBounds(el, ctx);
+          const t = getSnapTargets(drag.id, ctx);
+          const p = snapBox(newX, newY, b.w, b.h, t.xTargets, t.yTargets, thresh);
+          newX = p.x_mm;
+          newY = p.y_mm;
+        }
         store.updatePosition(drag.id, newX, newY);
       }
     } else if (drag.kind === "resize" && drag.handleIndex != null && drag.startW != null && drag.startH != null && drag.startElX_mm != null && drag.startElY_mm != null) {
@@ -314,8 +297,16 @@ function onMouseMove(ev: MouseEvent) {
     } else if (drag.kind === "line-end" && drag.endIndex !== undefined) {
       const le = elements.value.find((e) => e.id === drag.id) as LineElement | undefined;
       if (le) {
-        if (drag.endIndex === 0) store.updateLineEndpoints(drag.id, x_mm, y_mm, le.x2_mm, le.y2_mm);
-        else store.updateLineEndpoints(drag.id, le.x1_mm, le.y1_mm, x_mm, y_mm);
+        let ex = x_mm;
+        let ey = y_mm;
+        if (snap) {
+          const t = getSnapTargets(drag.id, ctx);
+          const p = snapPoint(x_mm, y_mm, t.xTargets, t.yTargets, thresh);
+          ex = p.x_mm;
+          ey = p.y_mm;
+        }
+        if (drag.endIndex === 0) store.updateLineEndpoints(drag.id, ex, ey, le.x2_mm, le.y2_mm);
+        else store.updateLineEndpoints(drag.id, le.x1_mm, le.y1_mm, ex, ey);
       }
     }
     redraw();
@@ -410,11 +401,10 @@ function drawElement(ctx: CanvasRenderingContext2D, e: Element) {
     ctx.font = buildCanvasFont(resolved);
     ctx.fillText(te.content, x, y + resolved.sizePx);
     if (e.id === selectedId.value) {
-      const m = ctx.measureText(te.content);
+      const b = getTextBoundsMm(te, ctx);
       ctx.strokeStyle = "#3b82f6";
       ctx.lineWidth = 2 / s;
-      const lineH = resolved.sizePx * TEXT_LEADING;
-      ctx.strokeRect(x, y, m.width + 4, lineH);
+      ctx.strokeRect(x, y, b.w * PX_PER_MM, b.h * PX_PER_MM);
     }
   } else if (e.type === "variable") {
     const ve = e as VariableElement;

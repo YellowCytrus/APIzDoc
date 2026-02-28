@@ -64,6 +64,8 @@ export const usePageEditorStore = defineStore("pageEditor", () => {
   });
   const selectedId = ref<string | null>(null);
   const showGrid = ref(true);
+  const snapEnabled = ref(true);
+  const snapThresholdMm = ref(2);
 
   const selected = computed(() => {
     const id = selectedId.value;
@@ -209,6 +211,16 @@ export const usePageEditorStore = defineStore("pageEditor", () => {
     showGrid.value = !showGrid.value;
   }
 
+  function setSnapEnabled(v: boolean) {
+    snapEnabled.value = v;
+  }
+  function toggleSnap() {
+    snapEnabled.value = !snapEnabled.value;
+  }
+  function setSnapThresholdMm(v: number) {
+    snapThresholdMm.value = Math.max(0.5, v);
+  }
+
   return {
     elements,
     variables,
@@ -217,8 +229,13 @@ export const usePageEditorStore = defineStore("pageEditor", () => {
     selectedId,
     selected,
     showGrid,
+    snapEnabled,
+    snapThresholdMm,
     PX_PER_MM,
     setSelected,
+    setSnapEnabled,
+    toggleSnap,
+    setSnapThresholdMm,
     setPaper,
     addText,
     addVariable,

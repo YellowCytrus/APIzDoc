@@ -23,6 +23,23 @@
         <span>Сетка</span>
       </label>
     </section>
+    <section class="section">
+      <h3>Привязка</h3>
+      <label class="grid-row">
+        <input :checked="snapEnabled" type="checkbox" @change="store.toggleSnap()" />
+        <span>Включить (Alt — без привязки)</span>
+      </label>
+      <label class="margin-row">
+        <span>Порог (мм)</span>
+        <input
+          :value="snapThresholdMm"
+          type="number"
+          min="0.5"
+          step="0.5"
+          @input="store.setSnapThresholdMm(parseFloat((($event.target as HTMLInputElement).value)) || 0.5)"
+        />
+      </label>
+    </section>
   </div>
 </template>
 
@@ -33,7 +50,7 @@ import { usePageEditorStore } from "../../stores/pageEditor";
 import { PAPER_PRESETS } from "../../types/pageEditor";
 
 const store = usePageEditorStore();
-const { paper, showGrid } = storeToRefs(store);
+const { paper, showGrid, snapEnabled, snapThresholdMm } = storeToRefs(store);
 const marginInput = ref(paper.value.margin);
 
 watch(paper, (p) => { marginInput.value = p.margin; }, { deep: true });
