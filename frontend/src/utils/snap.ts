@@ -38,12 +38,12 @@ export function snapBox(
   const candX: number[] = [];
   [x, x + w / 2, x + w].forEach((key, i) => {
     const t = snapAxis(key, xTargets, threshold);
-    if (t !== key) candX.push(t - [0, w / 2, w][i]);
+    if (t !== key) candX.push(t - [0, w / 2, w][i]!);
   });
   const candY: number[] = [];
   [y, y + h].forEach((key, i) => {
     const t = snapAxis(key, yTargets, threshold);
-    if (t !== key) candY.push(t - [0, h][i]);
+    if (t !== key) candY.push(t - [0, h][i]!);
   });
   return {
     x_mm: candX.length ? candX.reduce((a, c) => (Math.abs(c - x) < Math.abs(a - x) ? c : a)) : x,
