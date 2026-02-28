@@ -586,9 +586,19 @@ function drawLineHandles(ctx: CanvasRenderingContext2D, le: LineElement) {
   }
 }
 
+function preventAlt(e: KeyboardEvent) {
+  if (e.key === "Alt") {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+  }
+}
+
 onMounted(() => {
   const container = containerRef.value;
   if (!container) return;
+  document.addEventListener("keydown", preventAlt, { capture: true });
+  document.addEventListener("keyup", preventAlt, { capture: true });
   const ro = new ResizeObserver((entries) => {
     const entry = entries[0];
     if (entry) {
@@ -620,6 +630,8 @@ onMounted(() => {
   window.addEventListener("keyup", keyUp);
   onUnmounted(() => {
     ro.disconnect();
+    document.removeEventListener("keydown", preventAlt, { capture: true });
+    document.removeEventListener("keyup", preventAlt, { capture: true });
     window.removeEventListener("keydown", keyDown);
     window.removeEventListener("keyup", keyUp);
   });
