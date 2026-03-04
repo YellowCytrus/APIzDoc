@@ -496,6 +496,7 @@ function redraw() {
     ctx.save();
     ctx.translate(offsetX.value, offsetY.value);
     ctx.scale(scale.value, scale.value);
+
     const paperW = paper.value.width * PX_PER_MM;
     const paperH = paper.value.height * PX_PER_MM;
     ctx.fillStyle = "#fff";
@@ -503,6 +504,7 @@ function redraw() {
     ctx.strokeStyle = "#52525b";
     ctx.lineWidth = 1;
     ctx.strokeRect(0, 0, paperW, paperH);
+
     if (showGrid.value) {
       ctx.strokeStyle = "#3f3f46";
       ctx.lineWidth = 0.5;
@@ -521,7 +523,9 @@ function redraw() {
         ctx.stroke();
       }
     }
+
     elements.value.forEach((e) => drawElement(ctx, e));
+
     const sel = selectedId.value ? elements.value.find((e) => e.id === selectedId.value) : null;
     if (sel && isVariableElement(sel)) {
       drawHandles(ctx, sel as VariableElement);
@@ -529,14 +533,25 @@ function redraw() {
     if (sel && isLineElement(sel)) {
       drawLineHandles(ctx, sel as LineElement);
     }
+
+    // --- Умное размещение лейблов направляющих без перекрытий ---
     if (dragState.value != null && snapEnabled.value) {
       const guides = activeGuides.value;
       if (guides.vertical.length > 0 || guides.horizontal.length > 0) {
         const s = scale.value;
+        const leaderLen = 8; // пиксели экрана
+        const pad = 4; // пиксели экрана
+        const fontSizePx = Math.max(8, 12 / s);
+        const fontSizeWorld = fontSizePx / s;
+        const leaderLenWorld = leaderLen / s;
+        const padWorld = pad / s;
+
         ctx.save();
         ctx.strokeStyle = "#ef4444";
         ctx.lineWidth = 1 / s;
         ctx.setLineDash([4 / s, 4 / s]);
+
+        // Рисуем пунктирные линии
         for (const g of guides.vertical) {
           const px = g.x_mm * PX_PER_MM;
           const py1 = g.y1_mm * PX_PER_MM;
@@ -556,47 +571,285 @@ function redraw() {
           ctx.stroke();
         }
         ctx.setLineDash([]);
-        const fontSize = Math.max(8, 12 / s);
-        ctx.font = `${fontSize}px sans-serif`;
+        ctx.font = `${fontSizePx}px sans-serif`;
         ctx.textAlign = "left";
         ctx.textBaseline = "top";
-        const pad = 4;
-        const leaderLen = 8;
-        ctx.strokeStyle = "#ef4444";
-        ctx.lineWidth = 1 / s;
-        for (const g of guides.vertical) {
-          const label = `${Number(g.x_mm.toFixed(1))} mm`;
+
+        type LabelRect = { x: number; y: number; w: number; h: number };
+        const placedRects: LabelRect[] = [];
+
+        const rectsIntersect = (r1: LabelRect, r2: LabelRect): boolean =>
+          !(
+            r2.x >= r1.x + r1.w ||
+            r2.x + r2.w <= r1.x ||
+            r2.y >= r1.y + r1.h ||
+            r2.y + r2.h <= r1.y
+          );
+
+        const intersectsAny = (candidate: LabelRect): boolean =>
+          placedRects.some((r) => rectsIntersect(r, candidate));
+
+        // ---- Вертикальные направляющие ----
+        const verticalLabels: {
+          g: (typeof guides.vertical)[number];
+          side: "left" | "right";
+          yc: number;
+          labelY: number;
+          labelText: string;
+          textWidthWorld: number;
+          rect: LabelRect;
+        }[] = [];
+
+        const sortedV = [...guides.vertical].sort((a, b) => {
+          const ya = (a.y1_mm + a.y2_mm) / 2;
+          const yb = (b.y1_mm + b.y2_mm) / 2;
+          return ya - yb;
+        });
+
+        for (const g of sortedV) {
           const lineX = g.x_mm * PX_PER_MM;
-          const labelY = g.y1_mm * PX_PER_MM + pad;
-          const labelX = lineX + leaderLen + 2;
-          ctx.beginPath();
-          ctx.moveTo(lineX, labelY + fontSize / 2);
-          ctx.lineTo(lineX + leaderLen, labelY + fontSize / 2);
-          ctx.stroke();
-          const m = ctx.measureText(label);
-          ctx.fillStyle = "rgba(255,255,255,0.9)";
-          ctx.fillRect(labelX - 2, labelY - 2, m.width + 4, fontSize + 4);
-          ctx.fillStyle = "#ef4444";
-          ctx.fillText(label, labelX, labelY);
+          const y1 = g.y1_mm * PX_PER_MM;
+          const y2 = g.y2_mm * PX_PER_MM;
+          const desiredCenterY = (y1 + y2) / 2;
+          const labelText = `${Number(g.x_mm.toFixed(1))} mm`;
+          const metrics = ctx.measureText(labelText);
+          const textWidthWorld = metrics.width / s;
+          const labelHeightWorld = fontSizeWorld;
+          const labelWidthWorld = textWidthWorld + 2 * padWorld;
+          const labelFullHeightWorld = labelHeightWorld + 2 * padWorld;
+
+          const step = labelHeightWorld / 2;
+          const yCenters: number[] = [desiredCenterY];
+          for (let offset = step; offset <= y2 - y1; offset += step) {
+            if (desiredCenterY + offset <= y2) yCenters.push(desiredCenterY + offset);
+            if (desiredCenterY - offset >= y1) yCenters.push(desiredCenterY - offset);
+          }
+          const uniqueYCenters = [...new Set(yCenters.filter((y) => y >= y1 && y <= y2))];
+          uniqueYCenters.sort((a, b) => Math.abs(a - desiredCenterY) - Math.abs(b - desiredCenterY));
+
+          let bestPlacement:
+            | {
+                g: (typeof guides.vertical)[number];
+                side: "left" | "right";
+                yc: number;
+                labelY: number;
+                labelText: string;
+                textWidthWorld: number;
+                rect: LabelRect;
+              }
+            | null = null;
+
+          const sides: Array<"left" | "right"> = ["left", "right"];
+          for (const side of sides) {
+            for (const yc of uniqueYCenters) {
+              const labelY = yc - labelHeightWorld / 2;
+              const rectX =
+                side === "left"
+                  ? lineX - leaderLenWorld - labelWidthWorld
+                  : lineX + leaderLenWorld;
+              const candidateRect: LabelRect = {
+                x: rectX,
+                y: labelY - padWorld,
+                w: labelWidthWorld,
+                h: labelFullHeightWorld,
+              };
+              if (!intersectsAny(candidateRect)) {
+                bestPlacement = {
+                  g,
+                  side,
+                  yc,
+                  labelY,
+                  labelText,
+                  textWidthWorld,
+                  rect: candidateRect,
+                };
+                break;
+              }
+            }
+            if (bestPlacement) break;
+          }
+
+          if (!bestPlacement) {
+            const yc = desiredCenterY;
+            const labelY = yc - labelHeightWorld / 2;
+            const rectX = lineX - leaderLenWorld - labelWidthWorld;
+            bestPlacement = {
+              g,
+              side: "left",
+              yc,
+              labelY,
+              labelText,
+              textWidthWorld,
+              rect: {
+                x: rectX,
+                y: labelY - padWorld,
+                w: labelWidthWorld,
+                h: labelFullHeightWorld,
+              },
+            };
+          }
+
+          placedRects.push(bestPlacement.rect);
+          verticalLabels.push(bestPlacement);
         }
-        for (const g of guides.horizontal) {
-          const label = `${Number(g.y_mm.toFixed(1))} mm`;
-          const m = ctx.measureText(label);
+
+        // ---- Горизонтальные направляющие ----
+        const horizontalLabels: {
+          g: (typeof guides.horizontal)[number];
+          side: "top" | "bottom";
+          xc: number;
+          labelX: number;
+          labelText: string;
+          textWidthWorld: number;
+          rect: LabelRect;
+        }[] = [];
+
+        const sortedH = [...guides.horizontal].sort((a, b) => {
+          const xa = (a.x1_mm + a.x2_mm) / 2;
+          const xb = (b.x1_mm + b.x2_mm) / 2;
+          return xa - xb;
+        });
+
+        for (const g of sortedH) {
           const lineY = g.y_mm * PX_PER_MM;
-          const labelX = g.x1_mm * PX_PER_MM + pad;
-          const labelY = lineY + leaderLen + 2;
-          ctx.beginPath();
-          ctx.moveTo(labelX + m.width / 2, lineY);
-          ctx.lineTo(labelX + m.width / 2, lineY + leaderLen);
-          ctx.stroke();
-          ctx.fillStyle = "rgba(255,255,255,0.9)";
-          ctx.fillRect(labelX - 2, labelY - 2, m.width + 4, fontSize + 4);
-          ctx.fillStyle = "#ef4444";
-          ctx.fillText(label, labelX, labelY);
+          const x1 = g.x1_mm * PX_PER_MM;
+          const x2 = g.x2_mm * PX_PER_MM;
+          const desiredCenterX = (x1 + x2) / 2;
+          const labelText = `${Number(g.y_mm.toFixed(1))} mm`;
+          const metrics = ctx.measureText(labelText);
+          const textWidthWorld = metrics.width / s;
+          const labelHeightWorld = fontSizeWorld;
+          const labelWidthWorld = textWidthWorld + 2 * padWorld;
+          const labelFullHeightWorld = labelHeightWorld + 2 * padWorld;
+
+          const step = labelWidthWorld / 2;
+          const xCenters: number[] = [desiredCenterX];
+          for (let offset = step; offset <= x2 - x1; offset += step) {
+            if (desiredCenterX + offset <= x2) xCenters.push(desiredCenterX + offset);
+            if (desiredCenterX - offset >= x1) xCenters.push(desiredCenterX - offset);
+          }
+          const uniqueXCenters = [...new Set(xCenters.filter((x) => x >= x1 && x <= x2))];
+          uniqueXCenters.sort((a, b) => Math.abs(a - desiredCenterX) - Math.abs(b - desiredCenterX));
+
+          let bestPlacement:
+            | {
+                g: (typeof guides.horizontal)[number];
+                side: "top" | "bottom";
+                xc: number;
+                labelX: number;
+                labelText: string;
+                textWidthWorld: number;
+                rect: LabelRect;
+              }
+            | null = null;
+
+          const sidesH: Array<"top" | "bottom"> = ["bottom", "top"];
+          for (const side of sidesH) {
+            for (const xc of uniqueXCenters) {
+              const labelX = xc - textWidthWorld / 2;
+              const rectY =
+                side === "bottom"
+                  ? lineY + leaderLenWorld
+                  : lineY - leaderLenWorld - labelFullHeightWorld;
+              const candidateRect: LabelRect = {
+                x: labelX - padWorld,
+                y: rectY,
+                w: labelWidthWorld,
+                h: labelFullHeightWorld,
+              };
+              if (!intersectsAny(candidateRect)) {
+                bestPlacement = {
+                  g,
+                  side,
+                  xc,
+                  labelX,
+                  labelText,
+                  textWidthWorld,
+                  rect: candidateRect,
+                };
+                break;
+              }
+            }
+            if (bestPlacement) break;
+          }
+
+          if (!bestPlacement) {
+            const xc = desiredCenterX;
+            const labelX = xc - textWidthWorld / 2;
+            bestPlacement = {
+              g,
+              side: "bottom",
+              xc,
+              labelX,
+              labelText,
+              textWidthWorld,
+              rect: {
+                x: labelX - padWorld,
+                y: lineY + leaderLenWorld,
+                w: labelWidthWorld,
+                h: labelFullHeightWorld,
+              },
+            };
+          }
+
+          placedRects.push(bestPlacement.rect);
+          horizontalLabels.push(bestPlacement);
         }
+
+        // ---- Отрисовка всех лейблов ----
+        // Вертикальные
+        for (const lbl of verticalLabels) {
+          const lineX = lbl.g.x_mm * PX_PER_MM;
+          ctx.beginPath();
+          if (lbl.side === "left") {
+            ctx.moveTo(lineX, lbl.yc);
+            ctx.lineTo(lineX - leaderLenWorld, lbl.yc);
+          } else {
+            ctx.moveTo(lineX, lbl.yc);
+            ctx.lineTo(lineX + leaderLenWorld, lbl.yc);
+          }
+          ctx.stroke();
+
+          ctx.fillStyle = "rgba(255,255,255,0.9)";
+          ctx.fillRect(lbl.rect.x, lbl.rect.y, lbl.rect.w, lbl.rect.h);
+
+          ctx.fillStyle = "#ef4444";
+          const textX =
+            lbl.side === "left"
+              ? lineX - leaderLenWorld - lbl.textWidthWorld - padWorld
+              : lineX + leaderLenWorld + padWorld;
+          ctx.fillText(lbl.labelText, textX, lbl.labelY);
+        }
+
+        // Горизонтальные
+        for (const lbl of horizontalLabels) {
+          const lineY = lbl.g.y_mm * PX_PER_MM;
+          ctx.beginPath();
+          if (lbl.side === "top") {
+            ctx.moveTo(lbl.xc, lineY);
+            ctx.lineTo(lbl.xc, lineY - leaderLenWorld);
+          } else {
+            ctx.moveTo(lbl.xc, lineY);
+            ctx.lineTo(lbl.xc, lineY + leaderLenWorld);
+          }
+          ctx.stroke();
+
+          ctx.fillStyle = "rgba(255,255,255,0.9)";
+          ctx.fillRect(lbl.rect.x, lbl.rect.y, lbl.rect.w, lbl.rect.h);
+
+          ctx.fillStyle = "#ef4444";
+          const textY =
+            lbl.side === "top"
+              ? lineY - leaderLenWorld - fontSizeWorld - padWorld
+              : lineY + leaderLenWorld + padWorld;
+          ctx.fillText(lbl.labelText, lbl.labelX, textY);
+        }
+
         ctx.restore();
       }
     }
+    // ----------------------------------------------
+
     ctx.restore();
   });
 }
