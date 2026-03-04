@@ -22,7 +22,7 @@ import { usePageEditorStore } from "../../stores/pageEditor";
 import { useCanvas } from "../../composables/useCanvas";
 import type { Element, TextElement, VariableElement, LineElement } from "../../types/pageEditor";
 import { isVariableElement, isLineElement } from "../../types/pageEditor";
-import { snapPoint, snapBox } from "../../utils/snap";
+import { snapPoint, snapBox, getActiveGuides, type ActiveGuides } from "../../utils/snap";
 import {
   PX_PER_MM,
   TEXT_SIZE_PT,
@@ -142,6 +142,7 @@ interface DragState {
 }
 const dragState = ref<DragState | null>(null);
 const spacePressed = ref(false);
+const activeGuides = ref<ActiveGuides>({ vertical: [], horizontal: [] });
 
 function getElementBounds(
   e: Element,
@@ -398,6 +399,36 @@ function handleDrag(drag: DragState, x_mm: number, y_mm: number, snapOpts: SnapO
   dragHandlers[drag.kind](drag, x_mm, y_mm, snapOpts);
 }
 
+function updateActiveGuides(drag: DragState, ctx: CanvasRenderingContext2D | null) {
+  if (!snapEnabled.value) {
+    activeGuides.value = { vertical: [], horizontal: [] };
+    return;
+  }
+  const el = elements.value.find((e) => e.id === drag.id);
+  if (!el) {
+    activeGuides.value = { vertical: [], horizontal: [] };
+    return;
+  }
+  const { width: paperW, height: paperH } = paper.value;
+  const other = elements.value.filter((e) => e.id !== drag.id);
+  const otherBounds = other.map((e) => getElementBounds(e, ctx));
+  if (el.type === "line") {
+    const le = el as LineElement;
+    if (drag.kind === "line-end" && drag.endIndex !== undefined) {
+      const x = drag.endIndex === 0 ? le.x1_mm : le.x2_mm;
+      const y = drag.endIndex === 0 ? le.y1_mm : le.y2_mm;
+      activeGuides.value = getActiveGuides({ x, y }, paperW, paperH, otherBounds);
+    } else {
+      const cx = (le.x1_mm + le.x2_mm) / 2;
+      const cy = (le.y1_mm + le.y2_mm) / 2;
+      activeGuides.value = getActiveGuides({ x: cx, y: cy }, paperW, paperH, otherBounds);
+    }
+  } else {
+    const bounds = getElementBounds(el, ctx);
+    activeGuides.value = getActiveGuides(bounds, paperW, paperH, otherBounds);
+  }
+}
+
 function onMouseMove(ev: MouseEvent) {
   const canvas = canvasRef.value;
   if (!canvas) return;
@@ -422,12 +453,18 @@ function onMouseMove(ev: MouseEvent) {
     threshold: snapThresholdMm.value,
   };
   handleDrag(drag, x_mm, y_mm, snapOpts);
+  if (snapOpts.enabled) {
+    updateActiveGuides(drag, snapOpts.ctx);
+  } else {
+    activeGuides.value = { vertical: [], horizontal: [] };
+  }
   redraw();
 }
 
 function onMouseUp() {
   endPan();
   dragState.value = null;
+  activeGuides.value = { vertical: [], horizontal: [] };
   redraw();
 }
 
@@ -491,6 +528,74 @@ function redraw() {
     }
     if (sel && isLineElement(sel)) {
       drawLineHandles(ctx, sel as LineElement);
+    }
+    if (dragState.value != null && snapEnabled.value) {
+      const guides = activeGuides.value;
+      if (guides.vertical.length > 0 || guides.horizontal.length > 0) {
+        const s = scale.value;
+        ctx.save();
+        ctx.strokeStyle = "#ef4444";
+        ctx.lineWidth = 1 / s;
+        ctx.setLineDash([4 / s, 4 / s]);
+        for (const g of guides.vertical) {
+          const px = g.x_mm * PX_PER_MM;
+          const py1 = g.y1_mm * PX_PER_MM;
+          const py2 = g.y2_mm * PX_PER_MM;
+          ctx.beginPath();
+          ctx.moveTo(px, py1);
+          ctx.lineTo(px, py2);
+          ctx.stroke();
+        }
+        for (const g of guides.horizontal) {
+          const px1 = g.x1_mm * PX_PER_MM;
+          const px2 = g.x2_mm * PX_PER_MM;
+          const py = g.y_mm * PX_PER_MM;
+          ctx.beginPath();
+          ctx.moveTo(px1, py);
+          ctx.lineTo(px2, py);
+          ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        const fontSize = Math.max(8, 12 / s);
+        ctx.font = `${fontSize}px sans-serif`;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        const pad = 4;
+        const leaderLen = 8;
+        ctx.strokeStyle = "#ef4444";
+        ctx.lineWidth = 1 / s;
+        for (const g of guides.vertical) {
+          const label = `${Number(g.x_mm.toFixed(1))} mm`;
+          const lineX = g.x_mm * PX_PER_MM;
+          const labelY = g.y1_mm * PX_PER_MM + pad;
+          const labelX = lineX + leaderLen + 2;
+          ctx.beginPath();
+          ctx.moveTo(lineX, labelY + fontSize / 2);
+          ctx.lineTo(lineX + leaderLen, labelY + fontSize / 2);
+          ctx.stroke();
+          const m = ctx.measureText(label);
+          ctx.fillStyle = "rgba(255,255,255,0.9)";
+          ctx.fillRect(labelX - 2, labelY - 2, m.width + 4, fontSize + 4);
+          ctx.fillStyle = "#ef4444";
+          ctx.fillText(label, labelX, labelY);
+        }
+        for (const g of guides.horizontal) {
+          const label = `${Number(g.y_mm.toFixed(1))} mm`;
+          const m = ctx.measureText(label);
+          const lineY = g.y_mm * PX_PER_MM;
+          const labelX = g.x1_mm * PX_PER_MM + pad;
+          const labelY = lineY + leaderLen + 2;
+          ctx.beginPath();
+          ctx.moveTo(labelX + m.width / 2, lineY);
+          ctx.lineTo(labelX + m.width / 2, lineY + leaderLen);
+          ctx.stroke();
+          ctx.fillStyle = "rgba(255,255,255,0.9)";
+          ctx.fillRect(labelX - 2, labelY - 2, m.width + 4, fontSize + 4);
+          ctx.fillStyle = "#ef4444";
+          ctx.fillText(label, labelX, labelY);
+        }
+        ctx.restore();
+      }
     }
     ctx.restore();
   });

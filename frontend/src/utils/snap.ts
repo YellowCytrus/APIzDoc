@@ -1,3 +1,83 @@
+export interface VerticalGuide {
+  x_mm: number;
+  y1_mm: number;
+  y2_mm: number;
+}
+export interface HorizontalGuide {
+  y_mm: number;
+  x1_mm: number;
+  x2_mm: number;
+}
+export interface ActiveGuides {
+  vertical: VerticalGuide[];
+  horizontal: HorizontalGuide[];
+}
+
+export type GuideShapePoint = { x: number; y: number };
+export type GuideShapeBox = { x: number; y: number; w: number; h: number };
+
+const GUIDE_EPSILON = 0.01;
+
+function matches(a: number, b: number, epsilon: number): boolean {
+  return Math.abs(a - b) <= epsilon;
+}
+
+/** Compute active alignment guides with segment extent (full paper or between elements). */
+export function getActiveGuides(
+  shape: GuideShapePoint | GuideShapeBox,
+  paperWidth: number,
+  paperHeight: number,
+  otherBounds: { x: number; y: number; w: number; h: number }[],
+  epsilon: number = GUIDE_EPSILON
+): ActiveGuides {
+  const vertical: VerticalGuide[] = [];
+  const horizontal: HorizontalGuide[] = [];
+
+  const selfX = "w" in shape ? [shape.x, shape.x + shape.w / 2, shape.x + shape.w] : [shape.x];
+  const selfY = "h" in shape ? [shape.y, shape.y + shape.h / 2, shape.y + shape.h] : [shape.y];
+  const selfMinY = "h" in shape ? shape.y : shape.y;
+  const selfMaxY = "h" in shape ? shape.y + shape.h : shape.y;
+  const selfMinX = "w" in shape ? shape.x : shape.x;
+  const selfMaxX = "w" in shape ? shape.x + shape.w : shape.x;
+
+  const paperX = [0, paperWidth / 2, paperWidth];
+  const paperY = [0, paperHeight / 2, paperHeight];
+
+  for (const x of selfX) {
+    if (paperX.some((t) => matches(x, t, epsilon))) {
+      vertical.push({ x_mm: x, y1_mm: 0, y2_mm: paperHeight });
+      continue;
+    }
+    for (const b of otherBounds) {
+      const tx = [b.x, b.x + b.w / 2, b.x + b.w];
+      if (tx.some((t) => matches(x, t, epsilon))) {
+        const y1 = Math.min(selfMinY, b.y);
+        const y2 = Math.max(selfMaxY, b.y + b.h);
+        vertical.push({ x_mm: x, y1_mm: y1, y2_mm: y2 });
+        break;
+      }
+    }
+  }
+
+  for (const y of selfY) {
+    if (paperY.some((t) => matches(y, t, epsilon))) {
+      horizontal.push({ y_mm: y, x1_mm: 0, x2_mm: paperWidth });
+      continue;
+    }
+    for (const b of otherBounds) {
+      const ty = [b.y, b.y + b.h / 2, b.y + b.h];
+      if (ty.some((t) => matches(y, t, epsilon))) {
+        const x1 = Math.min(selfMinX, b.x);
+        const x2 = Math.max(selfMaxX, b.x + b.w);
+        horizontal.push({ y_mm: y, x1_mm: x1, x2_mm: x2 });
+        break;
+      }
+    }
+  }
+
+  return { vertical, horizontal };
+}
+
 /** Snap value to nearest target within threshold. */
 function snapAxis(value: number, targets: number[], threshold: number): number {
   let best = value;
