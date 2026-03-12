@@ -3,6 +3,7 @@ import { watch, ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import { usePreviewStore } from '../stores/preview';
 import { $typst } from '@myriaddreamin/typst.ts/contrib/snippet';
 import { API_BASE } from '../config';
+import Panzoom from '@panzoom/panzoom'
 
 const previewStore = usePreviewStore();
 
@@ -56,23 +57,27 @@ async function registerImagesForPreview(typstSource: string): Promise<string> {
 const canvasContainerRef = ref<HTMLElement | null>(null);
 const scrollAreaRef = ref<HTMLElement | null>(null);
 
-const ZOOM_MIN = 0.25;
-const ZOOM_MAX = 2;
-const ZOOM_STEP = 0.1;
-const zoom = ref(1);
-
-function handleWheel(e: WheelEvent) {
-  if (!e.ctrlKey && !e.metaKey) return;
-  e.preventDefault();
-  const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
-  zoom.value = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom.value + delta));
-}
-
 onMounted(() => {
-  scrollAreaRef.value?.addEventListener('wheel', handleWheel, { passive: false });
+  const elem = canvasContainerRef.value
+  const panzoom = Panzoom(elem, {
+    maxScale: 5,
+    cursor: 'grab'
+  })
+  panzoom.pan(10, 10)
+  panzoom.zoom(1, { animate: true })
+  elem.parentElement.addEventListener('wheel', panzoom.zoomWithWheel)
+  elem.addEventListener('panzoomstart', () => {
+    panzoom.setOptions({ cursor: 'grabbing' })
+  })
+
+  elem.addEventListener('panzoomend', () => {
+    panzoom.setOptions({ cursor: 'grab' })
+  })
+  elem.style.transform = 'scale(1)'
 });
 onUnmounted(() => {
-  scrollAreaRef.value?.removeEventListener('wheel', handleWheel);
+  const elem = canvasContainerRef.value
+  elem.parentElement.removeEventListener('wheel', panzoom.zoomWithWheel);
 });
 
 /** Compile typst source to canvas (paged rendering with native page separation) */
@@ -165,7 +170,7 @@ const showCanvasContainer = computed(
         v-show="showCanvasContainer"
         ref="canvasContainerRef"
         class="typst-preview-pages"
-        :style="{ transform: `scale(${zoom})`, transformOrigin: 'top center' }"
+
       />
 
       <!-- Loading overlay (container visible underneath for correct layout) -->
