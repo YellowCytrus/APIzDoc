@@ -6,6 +6,7 @@ Typst использует строки в двойных кавычках; эк
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -33,6 +34,10 @@ def _typst_str(s: str) -> str:
     """Форматирует строку Python как литерал строки Typst (в двойных кавычках)."""
     escaped = s.replace("\\", "\\\\").replace('"', '\\"')
     return f'"{escaped}"'
+
+
+# Typst оставляет место под номер даже при скрытой нумерации; компенсируем отрицательным inset.
+_HEADING_UNNUMBERED_LEFT_OUTDENT = "-0.3em"
 
 
 _CAPTION_PLACEHOLDER_RE = re.compile(r"\{([h][1-6]|[N]|content)\}", re.IGNORECASE)
@@ -303,12 +308,37 @@ def _footnote_line(e: FootnoteStyle) -> str:
     return "\n".join(parts)
 
 
-def _heading_line(e: HeadingStyle) -> str:
-    """Only numbering (global for all levels)."""
-    num = e.numbering if e.numbering != "none" else "none"
-    if num == "none":
+def _build_heading_numbering_set(
+    heading_style: "HeadingStyle",
+    level_styles: Iterable["HeadingLevelStyle"] | None,
+) -> str:
+    """Глобальная нумерация заголовков; уровни с numbering_enabled=False без номера, счётчик не ломается."""
+    pattern = heading_style.numbering
+    if pattern == "none":
         return "#set heading(numbering: none)"
-    return f"#set heading(numbering: {_typst_str(num)})"
+
+    hidden = sorted(
+        {hl.level for hl in (level_styles or ()) if not hl.numbering_enabled and 1 <= hl.level <= 6}
+    )
+    if not hidden:
+        return f"#set heading(numbering: {_typst_str(pattern)})"
+
+    if len(hidden) == 1:
+        hidden_tuple = f"({hidden[0]},)"
+    else:
+        hidden_tuple = "(" + ", ".join(str(x) for x in hidden) + ")"
+    pat = _typst_str(pattern)
+    return (
+        "#set heading(numbering: (..args) => {\n"
+        "  let n = args.pos()\n"
+        "  let level = n.len()\n"
+        f"  if {hidden_tuple}.contains(level) {{\n"
+        "    none\n"
+        "  } else {\n"
+        f"    numbering({pat}, ..n)\n"
+        "  }\n"
+        "})"
+    )
 
 
 def _numbered_list_line(e: NumberedListStyle) -> str:
@@ -436,28 +466,38 @@ def _outline_line(e: OutlineStyle) -> str:
 
 
 def _heading_level_line(hl: "HeadingLevelStyle") -> str:
-    """Per-level: set text (и опц. set block). При break_before — pagebreak(weak: true) перед заголовком."""
+    """Show-rule для заголовка нужного уровня.
+
+    Важно: Typst рекомендует оборачивать show-rule для `heading` в внешний `block`, чтобы
+    heading не "слипал" с последующим контентом (см. подсказку в документации Typst).
+    """
     level = hl.level
-    parts: list[str] = []
 
-    if level <= 2:
-        above = "1.5em" if level == 1 else "1.2em"
-        below = "1em" if level == 1 else "0.8em"
-        parts.append(f"set block(above: {above}, below: {below})")
-
+    set_parts: list[str] = []
+    # В content-mode (block[...]) все code-операторы должны идти с '#'
     if hl.text_override_style is not None:
         text_args = _text_override_to_typst_args(hl.text_override_style)
-        parts.append(f"set text({', '.join(text_args)})")
+        set_parts.append(f"#set text({', '.join(text_args)})")
 
-    body = "; ".join(parts)
+    outdent = _HEADING_UNNUMBERED_LEFT_OUTDENT
+    if hl.numbering_enabled:
+        content_tail = "#it"
+    else:
+        content_tail = f"#box(it, inset: (left: {outdent}))"
+    inner = "; ".join(set_parts + [content_tail])
+
     if hl.break_before:
-        # Inside [ ] we're in content mode: each statement must be prefixed with #
-        body_code = "; ".join(f"#{p}" for p in parts) if parts else ""
-        inner = "#pagebreak(weak: true); " + (f"{body_code}; " if body_code else "") + "#it"
-        return f"#show heading.where(level: {level}): it => [ {inner} ]"
-    if not parts:
-        return ""
-    return f"#show heading.where(level: {level}): it => {{ {body}; it }}"
+        # В Typst `#pagebreak` нельзя выполнять внутри `block[...]`, поэтому:
+        # - `#pagebreak` остаётся в контейнере `[...]`
+        # - `set ...` и возврат результата оборачиваются в `block[...]`
+        return (
+            f"#show heading.where(level: {level}): it => [ "
+            f"#pagebreak(weak: true); "
+            f"#block[ {inner} ]"
+            f" ]"
+        )
+
+    return f"#show heading.where(level: {level}): it => block[ {inner} ]"
 
 
 def _equation_show_rule(e: "EquationStyle") -> str:
@@ -477,11 +517,12 @@ def build_typst_preamble(profile: Profile) -> str:
     """Строит преамбулу Typst #set из стилей профиля. Один блок на элемент."""
     lines: list[str] = []
 
-    _STYLE_BUILDERS = [
+    _STYLE_BUILDERS_HEAD = [
         (profile.page_style, _page_line),
         (profile.document_style, _document_line),
         (profile.par_style, _par_line),
-        (profile.heading_style, _heading_line),
+    ]
+    _STYLE_BUILDERS_TAIL = [
         (profile.bullet_list_style, _bullet_list_line),
         (profile.numbered_list_style, _numbered_list_line),
         (profile.table_style, _table_line),
@@ -493,7 +534,21 @@ def build_typst_preamble(profile: Profile) -> str:
         (profile.outline_style, _outline_line),
     ]
 
-    for style, builder in _STYLE_BUILDERS:
+    for style, builder in _STYLE_BUILDERS_HEAD:
+        if style is not None:
+            part = builder(style)
+            if part:
+                lines.extend(part.split("\n"))
+
+    if profile.heading_style is not None:
+        hpart = _build_heading_numbering_set(
+            profile.heading_style,
+            profile.heading_level_styles,
+        )
+        if hpart:
+            lines.extend(hpart.split("\n"))
+
+    for style, builder in _STYLE_BUILDERS_TAIL:
         if style is not None:
             part = builder(style)
             if part:

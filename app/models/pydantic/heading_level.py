@@ -15,6 +15,9 @@ class HeadingLevelStyles(BaseModel):
     bookmarked: Literal["auto", "true", "false"] = Field("auto", description="Закладка в PDF")
     offset: int = Field(0, ge=0, description="Смещение уровня")
     break_before: bool = Field(False, description="Начинать с новой страницы")
+    numbering_enabled: bool = Field(
+        True, description="Показывать номер заголовка (при глобальной нумерации)"
+    )
     text_override: Optional[TextOverrideStyles] = None
 
 
@@ -23,4 +26,5 @@ class HeadingLevelStylesUpdate(BaseModel):
     bookmarked: Optional[Literal["auto", "true", "false"]] = None
     offset: Optional[int] = Field(None, ge=0)
     break_before: Optional[bool] = None
+    numbering_enabled: Optional[bool] = None
     text_override: Optional[TextOverrideStylesUpdate | dict] = None  # None = clear
