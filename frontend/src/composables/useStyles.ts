@@ -36,6 +36,9 @@ function typstListSpacing(s: string): string {
   return 'auto';
 }
 
+/** Компенсация пустого места под скрытый номер заголовка (см. typst_preamble._HEADING_UNNUMBERED_LEFT_OUTDENT). */
+const UNNUMBERED_HEADING_LEFT_OUTDENT = '-0.3em';
+
 type DTO = Record<string, unknown>;
 
 function pageLine(e: DTO): string {
@@ -75,11 +78,34 @@ function parLine(e: DTO): string {
   return `#set par(${a.join(', ')})`;
 }
 
-function headingLine(e: DTO): string {
+function collectHeadingLevelsWithoutNumbering(elements: Map<ElementType, DTO>): number[] {
+  const hidden: number[] = [];
+  for (let lv = 1; lv <= 6; lv += 1) {
+    const key = `heading_${lv}` as ElementType;
+    const row = elements.get(key);
+    if (row && row.numbering_enabled === false) hidden.push(lv);
+  }
+  return hidden;
+}
+
+function headingLine(e: DTO, hiddenLevels: number[]): string {
   const num = (e.numbering as string) ?? '1.1.1';
-  return num === 'none'
-    ? '#set heading(numbering: none)'
-    : `#set heading(numbering: ${typstStr(num)})`;
+  if (num === 'none') return '#set heading(numbering: none)';
+  if (hiddenLevels.length === 0) {
+    return `#set heading(numbering: ${typstStr(num)})`;
+  }
+  const tuple =
+    hiddenLevels.length === 1 ? `(${hiddenLevels[0]},)` : `(${hiddenLevels.join(', ')})`;
+  const pat = typstStr(num);
+  return `#set heading(numbering: (..args) => {
+  let n = args.pos()
+  let level = n.len()
+  if ${tuple}.contains(level) {
+    none
+  } else {
+    numbering(${pat}, ..n)
+  }
+})`;
 }
 
 function headingLevelLine(e: DTO, level: number): string {
@@ -88,7 +114,20 @@ function headingLevelLine(e: DTO, level: number): string {
   if (e.bookmarked && e.bookmarked !== 'auto') args.push(`bookmarked: ${e.bookmarked}`);
   if (e.offset && (e.offset as number) !== 0) args.push(`offset: ${e.offset}`);
   const suffix = args.length ? `, ${args.join(', ')}` : '';
-  return `#show heading.where(level: ${level}): it => heading(it.body${suffix})`;
+  const headingExpr = `heading(it.body${suffix})`;
+  const tail =
+    e.numbering_enabled === false
+      ? `#box(${headingExpr}, inset: (left: ${UNNUMBERED_HEADING_LEFT_OUTDENT}))`
+      : `#${headingExpr}`;
+
+  // В Typst `#pagebreak` нельзя выполнять внутри `block[...]`, поэтому:
+  // - при break_before: `it => [ #pagebreak(...); block[ <tail> ] ]`
+  // - без break_before: `it => block[ <tail> ]`
+  if (e.break_before) {
+    return `#show heading.where(level: ${level}): it => [ #pagebreak(weak: true); #block[ ${tail} ] ]`;
+  }
+
+  return `#show heading.where(level: ${level}): it => block[ ${tail} ]`;
 }
 
 function equationLine(_e: DTO): string {
@@ -175,11 +214,12 @@ function outlineLine(e: DTO): string {
   return a.length ? `#set outline(${a.join(', ')})` : '';
 }
 
-const BUILDERS: Record<ElementType, (e: DTO) => string> = {
+type ElementStyleBuilderKey = Exclude<ElementType, 'heading'>;
+
+const BUILDERS: Record<ElementStyleBuilderKey, (e: DTO) => string> = {
   page: pageLine,
   document: documentLine,
   par: parLine,
-  heading: headingLine,
   heading_1: (e) => headingLevelLine(e, 1),
   heading_2: (e) => headingLevelLine(e, 2),
   heading_3: (e) => headingLevelLine(e, 3),
@@ -199,10 +239,16 @@ const BUILDERS: Record<ElementType, (e: DTO) => string> = {
 };
 
 function buildTypstPreamble(elements: Map<ElementType, DTO>): string {
+  const hiddenHeadingLevels = collectHeadingLevelsWithoutNumbering(elements);
   const lines: string[] = [];
   for (const type of ALL_ELEMENT_PATHS) {
     const e = elements.get(type);
     if (!e) continue;
+    if (type === 'heading') {
+      const part = headingLine(e, hiddenHeadingLevels);
+      if (part) lines.push(...part.split('\n'));
+      continue;
+    }
     const fn = BUILDERS[type];
     if (!fn) continue;
     const part = fn(e);

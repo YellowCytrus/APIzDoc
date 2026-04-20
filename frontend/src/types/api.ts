@@ -229,6 +229,7 @@ export interface HeadingLevelStyles {
   bookmarked: string;
   offset: number;
   break_before: boolean;
+  numbering_enabled: boolean;
   text_override: TextOverrideStyles | null;
 }
 
@@ -237,6 +238,7 @@ export interface HeadingLevelStylesUpdate {
   bookmarked?: string;
   offset?: number;
   break_before?: boolean;
+  numbering_enabled?: boolean;
   text_override?: TextOverrideStyles | null;
 }
 

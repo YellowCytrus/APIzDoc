@@ -65,20 +65,6 @@ def _content_disposition_attachment(filename: str) -> str:
 TITLE_PAGE_ID_SFU_STU = -1
 
 _SFU_STU_TITLE_TYPST = r"""
-#set page(
-  paper: "a4",
-  margin: (left: 3cm, right: 1.5cm, top: 2cm, bottom: 2cm),
-  numbering: none,
-  header: none,
-  footer: none,
-)
-
-#set text(
-  font: ("Times New Roman", "DejaVu Serif", "Libertinus Serif"),
-  size: 14pt,
-  lang: "ru",
-)
-
 #let labeled-block(content, label) = {
   align(center, [
     #block(
@@ -89,7 +75,7 @@ _SFU_STU_TITLE_TYPST = r"""
         #v(-14pt)
         #line(length: 100%, stroke: 0.5pt)
         #v(-17pt)
-        #text(size: 10pt, fill: black)[#label]
+        #text(size: 12pt, fill: black)[#label]
       ]
     )
     #v(4pt)
@@ -98,13 +84,26 @@ _SFU_STU_TITLE_TYPST = r"""
 
 #let institute-name = "Институт космических и информационных технологий"
 #let department-name = "Информационные системы и технологии"
-#let work-type = "ОТЧЕТ О ПРАКТИЧЕСКОЙ РАБОТЕ №2"
-#let work-theme = "Составление базы данных"
-#let teacher-name = "Пахомова К.И."
+#let work-type = "ОТЧЕТ О ПРАКТИЧЕСКОЙ РАБОТЕ №5.2"
+#let work-theme = "ETL-пайплайн для загрузки данных из MinIO в PostgreSQL"
+#let teacher-name = "К.И. Пахомова"
 #let student-group = "КИ23-14Б"
 #let student-id = "032319377"
-#let student-name = "К. Д. Буданов"
+#let student-name = "К.Д. Буданов"
 #let city-year = "Красноярск 2026"
+
+#page(
+  paper: "a4",
+  margin: (left: 3cm, right: 1.5cm, top: 2cm, bottom: 2cm),
+  numbering: none,
+  header: none,
+  footer: none,
+)[
+  #set text(
+    font: ("Times New Roman", "DejaVu Serif", "Libertinus Serif"),
+    size: 14pt,
+    lang: "ru",
+  )
 
 #align(center, [
   Министерство науки и высшего образования РФ \
@@ -138,7 +137,7 @@ _SFU_STU_TITLE_TYPST = r"""
         #v(22pt)
         #line(length: 80%, stroke: 0.5pt)
         #v(-17pt)
-        #text(size: 10pt)[подпись, дата]
+        #text(size: 12pt)[подпись, дата]
       ])
     ])
   ],
@@ -150,7 +149,7 @@ _SFU_STU_TITLE_TYPST = r"""
         #v(-15pt)
         #line(length: 100%, stroke: 0.5pt)
         #v(-17pt)
-        #text(size: 10pt)[инициалы, фамилия]
+        #text(size: 12pt)[инициалы, фамилия]
       ])
     ])
   ],
@@ -163,7 +162,7 @@ _SFU_STU_TITLE_TYPST = r"""
      [#student-group, #student-id]
    )
    #v(-17pt)
-   #text(size: 10pt)[номер группы, зачетной книжки]
+   #text(size: 12pt)[номер группы, зачетной книжки]
   ],
   [
     #block(height: 1.5cm, [
@@ -171,7 +170,7 @@ _SFU_STU_TITLE_TYPST = r"""
         #v(10.5pt)
         #line(length: 80%, stroke: 0.5pt)
         #v(-17pt)
-        #text(size: 10pt)[подпись, дата]
+        #text(size: 12pt)[подпись, дата]
       ])
     ])
   ],
@@ -183,7 +182,7 @@ _SFU_STU_TITLE_TYPST = r"""
         #v(-15pt)
         #line(length: 100%, stroke: 0.5pt)
         #v(-17pt)
-        #text(size: 10pt)[инициалы, фамилия]
+        #text(size: 12pt)[инициалы, фамилия]
       ])
     ])
   ],
@@ -192,6 +191,7 @@ _SFU_STU_TITLE_TYPST = r"""
 #v(1.5fr)
 
 #align(center, city-year)
+]
 """
 # endregion
 
@@ -215,6 +215,7 @@ async def _resolve_image_asset_urls(
     ids = list(
         {
             int(m.group(1))
+            # FIXME что это блен, что за говнокодище
             for m in re.finditer(r'(?:https?://[^"]*?/)?image-assets/(\d+)/file', typst_source)
         }
     )
@@ -269,10 +270,14 @@ async def generate_pdf(
 
     preamble = build_typst_preamble(profile)
 
-    parts: list[str] = [preamble]
+    parts: list[str] = []
+    if title_page_id == TITLE_PAGE_ID_SFU_STU:
+        # SFU титульник — до преамбулы, чтобы #show table.cell: set text(...) не переопределял подписи
+        parts.append(_SFU_STU_TITLE_TYPST.strip() + "\n#pagebreak()\n#counter(page).update(2)\n")
+    parts.append(preamble)
     if title_page_id is not None:
-        if title_page_id == TITLE_PAGE_ID_SFU_STU:  # TEMPORARY: see region above
-            parts.append(_SFU_STU_TITLE_TYPST.strip() + "\n#pagebreak()\n")
+        if title_page_id == TITLE_PAGE_ID_SFU_STU:
+            pass  # уже добавлено выше
         else:
             title_page = await title_repo.get_by_id(title_page_id)
             if title_page is None:
@@ -335,23 +340,23 @@ async def export_typ(
         raise HTTPException(status_code=500, detail="Markdown conversion failed") from e
 
     preamble = build_typst_preamble(profile)
-    parts: list[str] = [preamble]
-    if title_page_id is not None:
-        if title_page_id == TITLE_PAGE_ID_SFU_STU:  # TEMPORARY: see region above
-            parts.append(_SFU_STU_TITLE_TYPST.strip() + "\n#pagebreak()\n")
-        else:
-            title_page = await title_repo.get_by_id(title_page_id)
-            if title_page is None:
-                raise HTTPException(status_code=404, detail="Title page not found")
-            tc = TitlePageContent.model_validate(title_page.content)
-            parts.append(
-                generate_fragment(
-                    tc.elements,
-                    tc.paper,
-                    tc.variables,
-                    ignore_document_styles=tc.ignore_document_styles,
-                )
+    parts: list[str] = []
+    if title_page_id == TITLE_PAGE_ID_SFU_STU:
+        parts.append(_SFU_STU_TITLE_TYPST.strip() + "\n#pagebreak()\n#counter(page).update(2)\n")
+    parts.append(preamble)
+    if title_page_id is not None and title_page_id != TITLE_PAGE_ID_SFU_STU:
+        title_page = await title_repo.get_by_id(title_page_id)
+        if title_page is None:
+            raise HTTPException(status_code=404, detail="Title page not found")
+        tc = TitlePageContent.model_validate(title_page.content)
+        parts.append(
+            generate_fragment(
+                tc.elements,
+                tc.paper,
+                tc.variables,
+                ignore_document_styles=tc.ignore_document_styles,
             )
+        )
     parts.append(typst_body)
     full_typst = "\n".join(parts)
 

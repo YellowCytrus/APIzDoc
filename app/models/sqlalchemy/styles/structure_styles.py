@@ -98,6 +98,7 @@ class HeadingLevelStyle(TextOverrideMixin, Base):
     bookmarked: Mapped[str] = mapped_column(String(16), nullable=False, default="auto")
     offset: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     break_before: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    numbering_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     text_override_style_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("text_override_styles.id", ondelete="SET NULL"),
         nullable=True,

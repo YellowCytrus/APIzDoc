@@ -415,6 +415,7 @@ export const STYLE_TAB_TREE: TabNode[] = [
         hasTextOverride: true,
         fields: [
           { key: 'break_before', label: 'С новой страницы', type: 'boolean' },
+          { key: 'numbering_enabled', label: 'Нумерация', type: 'boolean' },
           { key: 'outlined', label: 'В оглавлении', type: 'boolean' },
           {
             key: 'bookmarked',
@@ -436,6 +437,7 @@ export const STYLE_TAB_TREE: TabNode[] = [
         hasTextOverride: true,
         fields: [
           { key: 'break_before', label: 'С новой страницы', type: 'boolean' },
+          { key: 'numbering_enabled', label: 'Нумерация', type: 'boolean' },
           { key: 'outlined', label: 'В оглавлении', type: 'boolean' },
           {
             key: 'bookmarked',
@@ -457,6 +459,7 @@ export const STYLE_TAB_TREE: TabNode[] = [
         hasTextOverride: true,
         fields: [
           { key: 'break_before', label: 'С новой страницы', type: 'boolean' },
+          { key: 'numbering_enabled', label: 'Нумерация', type: 'boolean' },
           { key: 'outlined', label: 'В оглавлении', type: 'boolean' },
           {
             key: 'bookmarked',
@@ -478,6 +481,7 @@ export const STYLE_TAB_TREE: TabNode[] = [
         hasTextOverride: true,
         fields: [
           { key: 'break_before', label: 'С новой страницы', type: 'boolean' },
+          { key: 'numbering_enabled', label: 'Нумерация', type: 'boolean' },
           { key: 'outlined', label: 'В оглавлении', type: 'boolean' },
           {
             key: 'bookmarked',
@@ -499,6 +503,7 @@ export const STYLE_TAB_TREE: TabNode[] = [
         hasTextOverride: true,
         fields: [
           { key: 'break_before', label: 'С новой страницы', type: 'boolean' },
+          { key: 'numbering_enabled', label: 'Нумерация', type: 'boolean' },
           { key: 'outlined', label: 'В оглавлении', type: 'boolean' },
           {
             key: 'bookmarked',
@@ -520,6 +525,7 @@ export const STYLE_TAB_TREE: TabNode[] = [
         hasTextOverride: true,
         fields: [
           { key: 'break_before', label: 'С новой страницы', type: 'boolean' },
+          { key: 'numbering_enabled', label: 'Нумерация', type: 'boolean' },
           { key: 'outlined', label: 'В оглавлении', type: 'boolean' },
           {
             key: 'bookmarked',

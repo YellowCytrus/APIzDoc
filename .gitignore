@@ -19,3 +19,5 @@ src-example/
 # Uploaded images (stored locally in project)
 images/*
 !images/.gitkeep
+local_docker_start.sh
+scripts/obsidian_to_pdf.py

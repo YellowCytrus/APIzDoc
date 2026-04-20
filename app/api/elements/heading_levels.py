@@ -94,6 +94,7 @@ async def put_heading_level(
     row.bookmarked = body.bookmarked
     row.offset = body.offset
     row.break_before = body.break_before
+    row.numbering_enabled = body.numbering_enabled
     to_data = body.text_override.model_dump() if body.text_override is not None else None
     await apply_text_override(session, row, to_data)
     await session.flush()
