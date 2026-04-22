@@ -8,7 +8,7 @@ from app.models.pydantic.text_override import TextOverrideStyles, TextOverrideSt
 class QuoteStyles(BaseModel):
     """Стили блока цитаты Typst: #set quote(...)."""
 
-    indent: float = Field(1.5, ge=0.0, description="Отступ в em")
+    indent: float = Field(6.35, ge=0.0, description="Отступ в mm")
     block: bool = Field(True, description="Блочная цитата")
     quotes: Literal["auto", "true", "false"] = Field(
         "auto",

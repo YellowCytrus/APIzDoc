@@ -9,9 +9,9 @@ class FootnoteStyles(BaseModel):
     """Стили сноски Typst: #set footnote(...) + #set footnote.entry(...)."""
 
     marker_format: Literal["1", "a", "A", "i", "I", "*"] = "1"
-    clearance: float = Field(1.0, ge=0.0, description="Расстояние до сносок в em")
-    gap: float = Field(0.5, ge=0.0, description="Расстояние между записями в em")
-    indent: float = Field(1.0, ge=0.0, description="Отступ записи в em")
+    clearance: float = Field(4.2333333333, ge=0.0, description="Расстояние до сносок в mm")
+    gap: float = Field(2.1166666667, ge=0.0, description="Расстояние между записями в mm")
+    indent: float = Field(4.2333333333, ge=0.0, description="Отступ записи в mm")
     text_override: Optional[TextOverrideStyles] = None
 
 

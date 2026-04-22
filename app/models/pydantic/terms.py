@@ -9,8 +9,8 @@ class TermsStyles(BaseModel):
     """Стили списка терминов Typst: #set terms(...)."""
 
     tight: bool = Field(True, description="Компактный список")
-    indent: float = Field(0.0, ge=0.0, description="Отступ элемента в pt")
-    hanging_indent: float = Field(2.0, ge=0.0, description="Висячий отступ описания в em")
+    indent: float = Field(0.0, ge=0.0, description="Отступ элемента в mm")
+    hanging_indent: float = Field(8.4666666667, ge=0.0, description="Висячий отступ описания в mm")
     spacing: Literal["auto", "tight", "loose"] = "auto"
     text_override: Optional[TextOverrideStyles] = None
 

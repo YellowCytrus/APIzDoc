@@ -17,8 +17,8 @@ class BulletListStyles(BaseModel):
         max_length=3,
         description="Маркеры для уровней списка",
     )
-    indent: float = Field(0.0, ge=0.0, description="Отступ в pt")
-    body_indent: float = Field(0.5, ge=0.0, description="Отступ тела в em")
+    indent: float = Field(0.0, ge=0.0, description="Отступ в mm")
+    body_indent: float = Field(2.1166666667, ge=0.0, description="Отступ тела в mm")
     spacing: Literal["auto", "tight", "loose"] = "auto"
     text_override: Optional[TextOverrideStyles] = None
 

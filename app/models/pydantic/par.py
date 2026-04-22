@@ -8,9 +8,9 @@ from app.models.pydantic.text_override import TextOverrideStyles, TextOverrideSt
 class ParStyles(BaseModel):
     """Стили абзаца Typst: #set par(...)."""
 
-    spacing: float = Field(1.0, ge=0.0, description="Интервал между абзацами в em")
-    first_line_indent: float = Field(0.0, ge=0.0, description="Отступ первой строки в em")
-    hanging_indent: float = Field(0.0, ge=0.0, description="Висячий отступ в em")
+    spacing: float = Field(4.2333333333, ge=0.0, description="Интервал между абзацами в mm")
+    first_line_indent: float = Field(0.0, ge=0.0, description="Отступ первой строки в mm")
+    hanging_indent: float = Field(0.0, ge=0.0, description="Висячий отступ в mm")
     linebreaks: Literal["auto", "simple", "optimized"] = "auto"
     text_override: Optional[TextOverrideStyles] = None
 

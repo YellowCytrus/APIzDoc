@@ -8,13 +8,13 @@ from app.models.pydantic.text_override import TextOverrideStyles, TextOverrideSt
 class FigureStyles(BaseModel):
     """Стили изображения/фигуры Typst: #set image(...) + #set figure(...)."""
 
-    width: float = Field(1.0, ge=0.0, description="Ширина в em (0 = auto)")
-    height: float = Field(0.0, ge=0.0, description="Высота в em (0 = auto)")
+    width: float = Field(4.2333333333, ge=0.0, description="Ширина в mm (0 = auto)")
+    height: float = Field(0.0, ge=0.0, description="Высота в mm (0 = auto)")
     placement: Literal["none", "auto", "top", "bottom"] = Field(
         "none",
         description="Размещение фигуры на странице",
     )
-    gap: float = Field(0.65, ge=0.0, description="Зазор между телом и подписью в em")
+    gap: float = Field(2.7516666667, ge=0.0, description="Зазор между телом и подписью в mm")
     outlined: bool = Field(True, description="Включать в список фигур")
     fit: Literal["cover", "contain", "stretch"] = Field(
         "cover",
