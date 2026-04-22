@@ -1,18 +1,32 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useProfilesStore } from '../stores/profiles';
 import { useStyleEditor } from '../composables/useStyleEditor';
 import { STYLE_TAB_TREE } from '../config/styleFields';
 import type { ElementType } from '../types/api';
+import type { Unit } from '../utils/unitConversion';
+import { ptToMm } from '../utils/unitConversion';
 import ProfileSidebar from '../components/styles/ProfileSidebar.vue';
 import NestedTabs from '../components/styles/NestedTabs.vue';
 
 const profilesStore = useProfilesStore();
 const profileId = computed(() => profilesStore.currentId);
 const { styles, loading, saveStatus, updateField } = useStyleEditor(profileId);
+const units = ref<Record<string, Unit | undefined>>({});
 
-function onFieldChange(elementKey: ElementType, field: string, value: unknown) {
-  updateField(elementKey, field, value);
+const conversionContext = computed(() => {
+  const fontSizePt = Number(styles.value.document?.font_size) || 0;
+  return {
+    fontSizeMm: ptToMm(fontSizePt),
+  };
+});
+
+function onFieldChange(elementKey: ElementType, field: string, value: unknown, persist = true) {
+  updateField(elementKey, field, value, persist);
+}
+
+function onUnitChange(fieldPath: string, unit: Unit) {
+  units.value = { ...units.value, [fieldPath]: unit };
 }
 </script>
 
@@ -40,7 +54,10 @@ function onFieldChange(elementKey: ElementType, field: string, value: unknown) {
           :nodes="STYLE_TAB_TREE"
           :depth="0"
           :styles="styles"
+          :units="units"
+          :context="conversionContext"
           @field-change="onFieldChange"
+          @unit-change="onUnitChange"
         />
       </div>
 

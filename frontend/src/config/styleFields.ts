@@ -1,4 +1,5 @@
 import type { ElementType } from '../types/api';
+import type { Unit } from '../utils/unitConversion';
 
 export interface FieldDef {
   key: string;
@@ -11,6 +12,23 @@ export interface FieldDef {
   options?: { value: string; label: string }[];
   placeholder?: string;
   hint?: string;
+  allowedUnits?: Unit[];
+}
+
+export const UNIT_EXCLUDED_KEYS = new Set(['font_size', 'tracking', 'word_spacing']);
+const ABSOLUTE_SOURCE_UNITS = new Set(['mm', 'cm', 'pt', 'em']);
+const PERCENT_UNIT = '%';
+export const DEFAULT_ALLOWED_UNITS: Unit[] = ['mm', 'cm', 'in', 'em'];
+
+export function isMmConvertibleField(field: FieldDef): boolean {
+  if (field.type !== 'number') return false;
+  if (UNIT_EXCLUDED_KEYS.has(field.key)) return false;
+  if (field.unit === PERCENT_UNIT) return false;
+  return typeof field.unit === 'string' && ABSOLUTE_SOURCE_UNITS.has(field.unit);
+}
+
+export function getAllowedUnits(field: FieldDef): Unit[] {
+  return field.allowedUnits?.length ? field.allowedUnits : DEFAULT_ALLOWED_UNITS;
 }
 
 export interface TabLeaf {
@@ -715,7 +733,12 @@ export const STYLE_TAB_TREE: TabNode[] = [
       {
         key: 'stroke',
         label: 'Толщина линий',
-        type: 'string',
+        type: 'number',
+        min: 0,
+        max: 20,
+        step: 0.01,
+        unit: 'mm',
+        allowedUnits: ['mm', 'cm', 'in', 'pt'],
       },
       {
         key: 'align',
@@ -731,7 +754,12 @@ export const STYLE_TAB_TREE: TabNode[] = [
       {
         key: 'inset',
         label: 'Отступ ячеек',
-        type: 'string',
+        type: 'number',
+        min: 0,
+        max: 100,
+        step: 0.05,
+        unit: 'mm',
+        allowedUnits: ['mm', 'cm', 'in', 'pt'],
       },
       {
         key: 'fill',

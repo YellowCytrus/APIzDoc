@@ -4,15 +4,19 @@ import type { TabLeaf, TabGroup, TabNode } from '../../config/styleFields';
 import type { ElementType } from '../../types/api';
 import type { StyleDataMap } from '../../composables/useStyleEditor';
 import StyleForm from './StyleForm.vue';
+import type { Context, Unit } from '../../utils/unitConversion';
 
 const props = defineProps<{
   nodes: TabNode[];
   depth?: number;
   styles: StyleDataMap;
+  units: Record<string, Unit | undefined>;
+  context?: Context;
 }>();
 
 const emit = defineEmits<{
-  fieldChange: [elementKey: ElementType, field: string, value: unknown];
+  fieldChange: [elementKey: ElementType, field: string, value: unknown, persist?: boolean];
+  unitChange: [fieldPath: string, unit: Unit];
 }>();
 
 const currentDepth = props.depth ?? 0;
@@ -27,8 +31,12 @@ watch(
   },
 );
 
-function forwardFieldChange(elementKey: ElementType, field: string, value: unknown) {
-  emit('fieldChange', elementKey, field, value);
+function forwardFieldChange(elementKey: ElementType, field: string, value: unknown, persist = true) {
+  emit('fieldChange', elementKey, field, value, persist);
+}
+
+function forwardUnitChange(fieldPath: string, unit: Unit) {
+  emit('unitChange', fieldPath, unit);
 }
 </script>
 
@@ -56,7 +64,10 @@ function forwardFieldChange(elementKey: ElementType, field: string, value: unkno
           :fields="(nodes[activeIndex] as TabLeaf).fields"
           :values="styles[(nodes[activeIndex] as TabLeaf).elementKey] ?? {}"
           :has-text-override="(nodes[activeIndex] as TabLeaf).hasTextOverride"
+          :units="units"
+          :context="context"
           @field-change="forwardFieldChange"
+          @unit-change="forwardUnitChange"
         />
 
         <!-- Group: recurse -->
@@ -65,7 +76,10 @@ function forwardFieldChange(elementKey: ElementType, field: string, value: unkno
           :nodes="(nodes[activeIndex] as TabGroup).children ?? []"
           :depth="currentDepth + 1"
           :styles="styles"
+          :units="units"
+          :context="context"
           @field-change="forwardFieldChange"
+          @unit-change="forwardUnitChange"
         />
       </template>
     </div>

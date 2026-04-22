@@ -259,17 +259,17 @@ export interface TextOverrideStyles {
 }
 
 export interface TableStyles {
-  stroke: string;
+  stroke: number;
   align: string;
-  inset: string;
+  inset: number;
   fill: string;
   text_override: TextOverrideStyles | null;
 }
 
 export interface TableStylesUpdate {
-  stroke?: string;
+  stroke?: number;
   align?: string;
-  inset?: string;
+  inset?: number;
   fill?: string;
 }
 
