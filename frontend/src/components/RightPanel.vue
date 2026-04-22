@@ -39,9 +39,9 @@ watch(
       fetchElement<HeadingStyles>('heading'),
       fetchElement<TableStyles>('table'),
     ]);
-    docStyles.value = doc ?? ({ font_size: 12, line_spacing: 1.2 } as DocumentStyles);
+    docStyles.value = doc ?? ({ font_size: 12, line_spacing: 5.08 } as DocumentStyles);
     headingStyles.value = head ?? ({ numbering: '1.1.1' } as HeadingStyles);
-    tableStyles.value = tbl ?? ({ stroke: '0.5pt' } as TableStyles);
+    tableStyles.value = tbl ?? ({ stroke: 0.1763888889, align: 'auto', inset: 1.7638888889, fill: 'none', text_override: null } as TableStyles);
   },
   { immediate: true }
 );
@@ -73,7 +73,7 @@ async function updateHeading(up: { numbering?: string }) {
   await profilesStore.loadProfileStyles(currentProfileId.value);
 }
 
-async function updateTable(up: { stroke?: string }) {
+async function updateTable(up: { stroke?: number }) {
   if (!currentProfileId.value || !tableStyles.value) return;
   const body = { ...tableStyles.value, ...up };
   await fetch(`${API_BASE}/profiles/${currentProfileId.value}/table`, {
@@ -202,11 +202,11 @@ function toggleSection(s: string) {
           <div v-if="tableStyles" class="space-y-2">
             <div class="text-sm font-medium">Таблица</div>
             <input
-              type="text"
+              type="number"
               :value="tableStyles.stroke"
-              placeholder="0.5pt"
+              step="0.01"
               class="w-full rounded bg-zinc-700 px-2 py-1 text-sm"
-              @input="updateTable({ stroke: ($event.target as HTMLInputElement).value })"
+              @input="updateTable({ stroke: +(($event.target as HTMLInputElement).value) })"
             />
           </div>
           <div class="space-y-2">

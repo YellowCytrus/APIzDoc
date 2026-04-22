@@ -44,12 +44,13 @@ type DTO = Record<string, unknown>;
 function pageLine(e: DTO): string {
   const args: string[] = [typstStr(e.paper as string ?? 'a4')];
   if (e.flipped) args.push('flipped: true');
-  const mp: string[] = [];
-  if ((e.margin_top as number) !== 2.5) mp.push(`top: ${e.margin_top}cm`);
-  if ((e.margin_bottom as number) !== 2.5) mp.push(`bottom: ${e.margin_bottom}cm`);
-  if ((e.margin_left as number) !== 2.5) mp.push(`left: ${e.margin_left}cm`);
-  if ((e.margin_right as number) !== 2.5) mp.push(`right: ${e.margin_right}cm`);
-  if (mp.length) args.push(`margin: (${mp.join(', ')})`);
+  const mp: string[] = [
+    `top: ${((e.margin_top as number) ?? 25)}mm`,
+    `bottom: ${((e.margin_bottom as number) ?? 25)}mm`,
+    `left: ${((e.margin_left as number) ?? 25)}mm`,
+    `right: ${((e.margin_right as number) ?? 25)}mm`,
+  ];
+  args.push(`margin: (${mp.join(', ')})`);
   if ((e.columns as number) !== 1) args.push(`columns: ${e.columns}`);
   if (e.numbering !== 'none') args.push(`numbering: ${typstStr(e.numbering as string)}`);
   if (e.number_align !== 'center+bottom') args.push(`number-align: ${e.number_align}`);
@@ -66,13 +67,13 @@ function documentLine(e: DTO): string {
   if (e.tracking && (e.tracking as number) !== 0) ta.push(`tracking: ${e.tracking}pt`);
   if (e.word_spacing && (e.word_spacing as number) !== 100) ta.push(`spacing: ${e.word_spacing}%`);
   if (!e.ligatures && e.ligatures !== undefined) ta.push('ligatures: false');
-  return `#set text(${ta.join(', ')})\n#set par(leading: ${e.line_spacing ?? 1.2}em)`;
+  return `#set text(${ta.join(', ')})\n#set par(leading: ${e.line_spacing ?? 5.08}mm)`;
 }
 
 function parLine(e: DTO): string {
-  const a: string[] = [`spacing: ${e.spacing ?? 1}em`];
-  if (e.first_line_indent && (e.first_line_indent as number) !== 0) a.push(`first-line-indent: (amount: ${e.first_line_indent}em, all: true)`);
-  if (e.hanging_indent && (e.hanging_indent as number) !== 0) a.push(`hanging-indent: ${e.hanging_indent}em`);
+  const a: string[] = [`spacing: ${e.spacing ?? 4.2333333333}mm`];
+  if (e.first_line_indent && (e.first_line_indent as number) !== 0) a.push(`first-line-indent: (amount: ${e.first_line_indent}mm, all: true)`);
+  if (e.hanging_indent && (e.hanging_indent as number) !== 0) a.push(`hanging-indent: ${e.hanging_indent}mm`);
   if (e.justify) a.push('justify: true');
   if (e.linebreaks && e.linebreaks !== 'auto') a.push(`linebreaks: ${typstStr(e.linebreaks as string)}`);
   return `#set par(${a.join(', ')})`;
@@ -137,14 +138,14 @@ function equationLine(_e: DTO): string {
 function bulletListLine(e: DTO): string {
   const markers = (e.marker as string[]) ?? ['- ', '‣', '–'];
   const markersStr = markers.map(typstStr).join(', ');
-  return `#set list(tight: ${e.tight ?? true}, indent: ${e.indent ?? 0}pt, body-indent: ${e.body_indent ?? 0.5}em, spacing: ${typstListSpacing((e.spacing as string) ?? 'auto')}, marker: (${markersStr}))`;
+  return `#set list(tight: ${e.tight ?? true}, indent: ${e.indent ?? 0}mm, body-indent: ${e.body_indent ?? 2.1166666667}mm, spacing: ${typstListSpacing((e.spacing as string) ?? 'auto')}, marker: (${markersStr}))`;
 }
 
 function numberedListLine(e: DTO): string {
   const a: string[] = [
     `tight: ${e.tight ?? true}`,
-    `indent: ${e.indent ?? 0}pt`,
-    `body-indent: ${e.body_indent ?? 0.5}em`,
+    `indent: ${e.indent ?? 0}mm`,
+    `body-indent: ${e.body_indent ?? 2.1166666667}mm`,
     `spacing: ${typstListSpacing((e.spacing as string) ?? 'auto')}`,
   ];
   if (e.numbering && e.numbering !== '1.') a.push(`numbering: ${typstStr(e.numbering as string)}`);
@@ -154,22 +155,22 @@ function numberedListLine(e: DTO): string {
 }
 
 function tableLine(e: DTO): string {
-  const a: string[] = [`stroke: ${e.stroke ?? '0.5pt'}`];
+  const a: string[] = [`stroke: ${(e.stroke as number) ?? 0.1763888889}mm`];
   if (e.align && e.align !== 'auto') a.push(`align: ${e.align}`);
-  if (e.inset && e.inset !== '5pt') a.push(`inset: ${e.inset}`);
+  a.push(`inset: ${((e.inset as number) ?? 1.7638888889)}mm`);
   if (e.fill && e.fill !== 'none') a.push(`fill: ${e.fill}`);
   return `#set table(${a.join(', ')})`;
 }
 
 function figureLine(e: DTO): string {
-  const w = (e.width as number) ? `${e.width}em` : 'auto';
-  const h = (e.height as number) ? `${e.height}em` : 'auto';
+  const w = (e.width as number) ? `${e.width}mm` : 'auto';
+  const h = (e.height as number) ? `${e.height}mm` : 'auto';
   const ia: string[] = [`width: ${w}`, `height: ${h}`];
   if (e.fit && e.fit !== 'cover') ia.push(`fit: ${typstStr(e.fit as string)}`);
   const parts: string[] = [`#set image(${ia.join(', ')})`];
   const fa: string[] = [];
   if (e.placement && e.placement !== 'none') fa.push(`placement: ${e.placement}`);
-  if (e.gap && (e.gap as number) !== 0.65) fa.push(`gap: ${e.gap}em`);
+  fa.push(`gap: ${((e.gap as number) ?? 2.7516666667)}mm`);
   if (e.outlined === false) fa.push('outlined: false');
   if (fa.length) parts.push(`#set figure(${fa.join(', ')})`);
   return parts.join('\n');
@@ -177,18 +178,19 @@ function figureLine(e: DTO): string {
 
 function footnoteLine(e: DTO): string {
   const parts: string[] = [`#set footnote(numbering: ${typstStr((e.marker_format as string) ?? '1')})`];
-  const ea: string[] = [];
-  if (e.clearance && (e.clearance as number) !== 1) ea.push(`clearance: ${e.clearance}em`);
-  if (e.gap && (e.gap as number) !== 0.5) ea.push(`gap: ${e.gap}em`);
-  if (e.indent && (e.indent as number) !== 1) ea.push(`indent: ${e.indent}em`);
-  if (ea.length) parts.push(`#set footnote.entry(${ea.join(', ')})`);
+  const ea: string[] = [
+    `clearance: ${((e.clearance as number) ?? 4.2333333333)}mm`,
+    `gap: ${((e.gap as number) ?? 2.1166666667)}mm`,
+    `indent: ${((e.indent as number) ?? 4.2333333333)}mm`,
+  ];
+  parts.push(`#set footnote.entry(${ea.join(', ')})`);
   return parts.join('\n');
 }
 
 function quoteLine(e: DTO): string {
   const qa: string[] = [`block: ${e.block ?? true}`];
   if (e.quotes && e.quotes !== 'auto') qa.push(`quotes: ${e.quotes}`);
-  return `#set quote(${qa.join(', ')})\n#show quote: set pad(x: ${e.indent ?? 1.5}em)`;
+  return `#set quote(${qa.join(', ')})\n#show quote: set pad(x: ${e.indent ?? 6.35}mm)`;
 }
 
 function rawLine(e: DTO): string {
@@ -201,8 +203,8 @@ function rawLine(e: DTO): string {
 
 function termsLine(e: DTO): string {
   const a: string[] = [`tight: ${e.tight ?? true}`];
-  if (e.indent && (e.indent as number) !== 0) a.push(`indent: ${e.indent}pt`);
-  if (e.hanging_indent && (e.hanging_indent as number) !== 2) a.push(`hanging-indent: ${e.hanging_indent}em`);
+  if (e.indent && (e.indent as number) !== 0) a.push(`indent: ${e.indent}mm`);
+  a.push(`hanging-indent: ${((e.hanging_indent as number) ?? 8.4666666667)}mm`);
   if (e.spacing && e.spacing !== 'auto') a.push(`spacing: ${typstListSpacing(e.spacing as string)}`);
   return `#set terms(${a.join(', ')})`;
 }
