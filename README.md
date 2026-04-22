@@ -36,9 +36,10 @@ docker-compose up --build
 4. **POST /profiles/{id}/generate-pdf** — загрузить Markdown-файл, получить PDF в ответе.
 5. При необходимости использовать **PATCH /profiles/{id}/bullet_list** и снова вызвать генерацию PDF.
 
-## API
+## Документация
 
-Полное описание запросов и схем — в [документации API](docs/API.md).
+- **WIKI (архитектура, потоки, Typst, фронт):** [docs/wiki/SUMMARY.md](docs/wiki/SUMMARY.md)
+- **REST API (кратко + ссылки):** [docs/API.md](docs/API.md) — детальная шпаргалка в [docs/wiki/Backend/API.md](docs/wiki/Backend/API.md); на запущенном сервере — [Swagger](http://localhost:8000/docs)
 
 - **Profiles**: `POST/GET/PATCH/DELETE /profiles`, `GET /profiles/{id}`.
 - **Element styles** (на каждый тип свой путь):
