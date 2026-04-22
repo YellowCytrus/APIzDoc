@@ -2,9 +2,8 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.models.constants.style_defaults import BULLET_MARKERS_DEFAULT, LIST_BODY_INDENT_MM_DEFAULT
 from app.models.pydantic.text_override import TextOverrideStyles
-
-_DEFAULT_MARKERS = ["- ", "‣", "–"]
 
 
 class BulletListStyles(BaseModel):
@@ -12,13 +11,13 @@ class BulletListStyles(BaseModel):
 
     tight: bool = True
     marker: list[str] = Field(
-        default_factory=lambda: list(_DEFAULT_MARKERS),
+        default_factory=lambda: list(BULLET_MARKERS_DEFAULT),
         min_length=1,
         max_length=3,
         description="Маркеры для уровней списка",
     )
     indent: float = Field(0.0, ge=0.0, description="Отступ в mm")
-    body_indent: float = Field(2.1166666667, ge=0.0, description="Отступ тела в mm")
+    body_indent: float = Field(LIST_BODY_INDENT_MM_DEFAULT, ge=0.0, description="Отступ тела в mm")
     spacing: Literal["auto", "tight", "loose"] = "auto"
     text_override: Optional[TextOverrideStyles] = None
 
@@ -26,7 +25,7 @@ class BulletListStyles(BaseModel):
     @classmethod
     def pad_markers(cls, v: list[str]) -> list[str]:
         """Дополняет список маркеров до 3 элементов дефолтными значениями."""
-        return (v + _DEFAULT_MARKERS)[:3]
+        return (v + BULLET_MARKERS_DEFAULT)[:3]
 
 
 class BulletListStylesUpdate(BaseModel):
@@ -43,4 +42,4 @@ class BulletListStylesUpdate(BaseModel):
         """Дополняет список маркеров до 3 элементов дефолтными значениями."""
         if v is None:
             return None
-        return (v + _DEFAULT_MARKERS)[:3]
+        return (v + BULLET_MARKERS_DEFAULT)[:3]

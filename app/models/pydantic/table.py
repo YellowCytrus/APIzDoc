@@ -2,15 +2,16 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
+from app.models.constants.style_defaults import TABLE_INSET_MM_DEFAULT, TABLE_STROKE_MM_DEFAULT
 from app.models.pydantic.text_override import TextOverrideStyles, TextOverrideStylesUpdate
 
 
 class TableStyles(BaseModel):
     """Стили таблицы Typst: #set table(...)."""
 
-    stroke: float = Field(0.1763888889, ge=0.0, description="Толщина линии в mm")
+    stroke: float = Field(TABLE_STROKE_MM_DEFAULT, ge=0.0, description="Толщина линии в mm")
     align: str = Field("auto", max_length=32, description="Выравнивание содержимого")
-    inset: float = Field(1.7638888889, ge=0.0, description="Внутренний отступ ячеек в mm")
+    inset: float = Field(TABLE_INSET_MM_DEFAULT, ge=0.0, description="Внутренний отступ ячеек в mm")
     fill: str = Field("none", max_length=64, description="Заливка ячеек")
     text_override: Optional[TextOverrideStyles] = None
 

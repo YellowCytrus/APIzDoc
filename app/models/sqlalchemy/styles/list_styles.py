@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+from app.models.constants.style_defaults import BULLET_MARKERS_DEFAULT, LIST_BODY_INDENT_MM_DEFAULT
 
 from app.models.sqlalchemy.styles.base import TextOverrideMixin, TextOverrideStyle
 
@@ -27,10 +28,10 @@ class BulletListStyle(TextOverrideMixin, Base):
     marker: Mapped[list[str]] = mapped_column(
         ARRAY(String(64)),
         nullable=False,
-        default=lambda: ["- ", "‣", "–"],
+        default=lambda: list(BULLET_MARKERS_DEFAULT),
     )
     indent: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
-    body_indent: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
+    body_indent: Mapped[float] = mapped_column(Float, nullable=False, default=LIST_BODY_INDENT_MM_DEFAULT)
     spacing: Mapped[str] = mapped_column(String(32), nullable=False, default="auto")
     text_override_style_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("text_override_styles.id", ondelete="SET NULL"),
@@ -55,7 +56,7 @@ class NumberedListStyle(TextOverrideMixin, Base):
     )
     tight: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     indent: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
-    body_indent: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
+    body_indent: Mapped[float] = mapped_column(Float, nullable=False, default=LIST_BODY_INDENT_MM_DEFAULT)
     spacing: Mapped[str] = mapped_column(String(32), nullable=False, default="auto")
     numbering: Mapped[str] = mapped_column(String(64), nullable=False, default="1.")
     start: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, default=None)

@@ -7,6 +7,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
+from app.models.constants.style_defaults import (
+    DOCUMENT_LINE_SPACING_MM_DEFAULT,
+    PAR_SPACING_MM_DEFAULT,
+    QUOTE_INDENT_MM_DEFAULT,
+)
 from app.models.sqlalchemy.styles.base import DEFAULT_FONT, TextOverrideMixin, TextOverrideStyle
 
 if TYPE_CHECKING:
@@ -23,7 +28,7 @@ class DocumentStyle(Base):
         nullable=False,
     )
     font_size: Mapped[float] = mapped_column(Float, nullable=False, default=12.0)
-    line_spacing: Mapped[float] = mapped_column(Float, nullable=False, default=1.2)
+    line_spacing: Mapped[float] = mapped_column(Float, nullable=False, default=DOCUMENT_LINE_SPACING_MM_DEFAULT)
     font: Mapped[str] = mapped_column(String(255), nullable=False, default=DEFAULT_FONT)
     weight: Mapped[str] = mapped_column(String(32), nullable=False, default="regular")
     style: Mapped[str] = mapped_column(String(32), nullable=False, default="normal")
@@ -50,7 +55,7 @@ class ParStyle(TextOverrideMixin, Base):
         unique=True,
         nullable=False,
     )
-    spacing: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
+    spacing: Mapped[float] = mapped_column(Float, nullable=False, default=PAR_SPACING_MM_DEFAULT)
     first_line_indent: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     hanging_indent: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     linebreaks: Mapped[str] = mapped_column(String(32), nullable=False, default="auto")
@@ -75,7 +80,7 @@ class QuoteStyle(TextOverrideMixin, Base):
         unique=True,
         nullable=False,
     )
-    indent: Mapped[float] = mapped_column(Float, nullable=False, default=1.5)
+    indent: Mapped[float] = mapped_column(Float, nullable=False, default=QUOTE_INDENT_MM_DEFAULT)
     block: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     quotes: Mapped[str] = mapped_column(String(16), nullable=False, default="auto")
     text_override_style_id: Mapped[Optional[int]] = mapped_column(
