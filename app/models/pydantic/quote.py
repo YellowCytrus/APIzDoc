@@ -2,13 +2,14 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
+from app.models.constants.style_defaults import QUOTE_INDENT_MM_DEFAULT
 from app.models.pydantic.text_override import TextOverrideStyles, TextOverrideStylesUpdate
 
 
 class QuoteStyles(BaseModel):
     """Стили блока цитаты Typst: #set quote(...)."""
 
-    indent: float = Field(1.5, ge=0.0, description="Отступ в em")
+    indent: float = Field(QUOTE_INDENT_MM_DEFAULT, ge=0.0, description="Отступ в mm")
     block: bool = Field(True, description="Блочная цитата")
     quotes: Literal["auto", "true", "false"] = Field(
         "auto",

@@ -1,5 +1,4 @@
 import { ref, watch, type Ref } from 'vue';
-import { useDebounceFn } from '@vueuse/core';
 import { API_BASE } from '../config';
 import { STYLE_TAB_TREE, collectElementKeys } from '../config/styleFields';
 import type { ElementType } from '../types/api';
@@ -87,28 +86,50 @@ export function useStyleEditor(profileId: Ref<number | null>) {
     }
   }
 
-  const debouncedPatch = useDebounceFn(
-    async (elementKey: ElementType, field: string, value: unknown) => {
-      const id = profileId.value;
-      if (id == null) return;
-      saving.value = true;
-      setSaveStatus('saving');
-      try {
-        const updated = await patchElementStyles(id, elementKey, { [field]: value });
-        styles.value = { ...styles.value, [elementKey]: updated };
-        setSaveStatus('saved');
-        const profilesStore = useProfilesStore();
-        profilesStore.loadProfileStyles(id);
-      } catch {
-        setSaveStatus('error');
-      } finally {
-        saving.value = false;
-      }
-    },
-    400,
-  );
+  const fieldTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  const fieldVersions = new Map<string, number>();
+  let inflightSaves = 0;
 
-  function updateField(elementKey: ElementType, field: string, value: unknown) {
+  async function persistField(elementKey: ElementType, field: string, value: unknown, version: number) {
+    const id = profileId.value;
+    if (id == null) return;
+    inflightSaves += 1;
+    saving.value = inflightSaves > 0;
+    setSaveStatus('saving');
+    const key = `${elementKey}:${field}`;
+    try {
+      await patchElementStyles(id, elementKey, { [field]: value });
+      if (fieldVersions.get(key) !== version) return;
+      // Keep optimistic local state as source of truth for edited field.
+      // Replacing it with server payload can re-apply legacy normalization
+      // and cause visible jumps while sliders are being dragged.
+      setSaveStatus('saved');
+      const profilesStore = useProfilesStore();
+      void profilesStore.loadProfileStyles(id);
+    } catch {
+      if (fieldVersions.get(key) === version) {
+        setSaveStatus('error');
+      }
+    } finally {
+      inflightSaves = Math.max(0, inflightSaves - 1);
+      saving.value = inflightSaves > 0;
+    }
+  }
+
+  function schedulePersist(elementKey: ElementType, field: string, value: unknown) {
+    const key = `${elementKey}:${field}`;
+    const version = (fieldVersions.get(key) ?? 0) + 1;
+    fieldVersions.set(key, version);
+    const existingTimer = fieldTimers.get(key);
+    if (existingTimer) clearTimeout(existingTimer);
+    const timer = setTimeout(() => {
+      fieldTimers.delete(key);
+      void persistField(elementKey, field, value, version);
+    }, 400);
+    fieldTimers.set(key, timer);
+  }
+
+  function updateField(elementKey: ElementType, field: string, value: unknown, persist = true) {
     styles.value = {
       ...styles.value,
       [elementKey]: {
@@ -116,7 +137,9 @@ export function useStyleEditor(profileId: Ref<number | null>) {
         [field]: value,
       },
     };
-    debouncedPatch(elementKey, field, value);
+    if (persist) {
+      schedulePersist(elementKey, field, value);
+    }
   }
 
   watch(

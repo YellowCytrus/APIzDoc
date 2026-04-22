@@ -1,17 +1,52 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { FieldDef } from '../../config/styleFields';
+import { getAllowedUnits, isMmConvertibleField, type FieldDef } from '../../config/styleFields';
+import type { Context, Unit } from '../../utils/unitConversion';
+import { ptToMm, toMm } from '../../utils/unitConversion';
+import UnitInput from './UnitInput.vue';
 
 const props = defineProps<{
   field: FieldDef;
   modelValue: unknown;
+  displayUnit?: Unit;
+  context?: Context;
 }>();
 
 const emit = defineEmits<{
-  'update:modelValue': [value: unknown];
+  'update:modelValue': [value: unknown, persist?: boolean];
+  'update:unit': [unit: Unit];
 }>();
 
+const isConvertible = computed(() => isMmConvertibleField(props.field));
+const sourceUnit = computed(() => {
+  if (!props.field.unit || !isConvertible.value) return null;
+  return props.field.unit as 'mm' | 'cm' | 'pt' | 'em';
+});
+const allowedUnits = computed(() => getAllowedUnits(props.field));
 const numValue = computed(() => Number(props.modelValue) || 0);
+const valueMm = computed(() => {
+  if (!isConvertible.value) return numValue.value;
+  return numValue.value;
+});
+const minMm = computed(() => {
+  if (!isConvertible.value || props.field.min == null || !sourceUnit.value) return props.field.min;
+  if (sourceUnit.value === 'pt') return ptToMm(props.field.min);
+  if (sourceUnit.value === 'mm') return props.field.min;
+  return toMm(props.field.min, sourceUnit.value, props.context);
+});
+const maxMm = computed(() => {
+  if (!isConvertible.value || props.field.max == null || !sourceUnit.value) return props.field.max;
+  if (sourceUnit.value === 'pt') return ptToMm(props.field.max);
+  if (sourceUnit.value === 'mm') return props.field.max;
+  return toMm(props.field.max, sourceUnit.value, props.context);
+});
+const stepMm = computed(() => {
+  if (!isConvertible.value || props.field.step == null || !sourceUnit.value) return props.field.step;
+  if (sourceUnit.value === 'pt') return ptToMm(props.field.step);
+  if (sourceUnit.value === 'mm') return props.field.step;
+  return toMm(props.field.step, sourceUnit.value, props.context);
+});
+const activeUnit = computed<Unit>(() => props.displayUnit ?? allowedUnits.value[0] ?? 'mm');
 
 const markers = computed<string[]>(() => {
   const val = props.modelValue;
@@ -24,6 +59,14 @@ function updateMarker(index: number, value: string) {
   updated[index] = value;
   emit('update:modelValue', updated);
 }
+
+function onMmInput(nextValueMm: number) {
+  emit('update:modelValue', nextValueMm, false);
+}
+
+function onMmCommit(nextValueMm: number) {
+  emit('update:modelValue', nextValueMm, true);
+}
 </script>
 
 <template>
@@ -32,25 +75,40 @@ function updateMarker(index: number, value: string) {
 
     <!-- Number: slider + input -->
     <div v-if="field.type === 'number'" class="field-number">
-      <input
-        type="range"
-        :min="field.min ?? 0"
-        :max="field.max ?? 100"
-        :step="field.step ?? 1"
-        :value="numValue"
-        class="field-slider"
-        @input="emit('update:modelValue', Number(($event.target as HTMLInputElement).value))"
+      <UnitInput
+        v-if="isConvertible"
+        :value-mm="valueMm"
+        :unit="activeUnit"
+        :allowed-units="allowedUnits"
+        :min-mm="minMm"
+        :max-mm="maxMm"
+        :step-mm="stepMm"
+        :context="context"
+        @preview="onMmInput"
+        @commit="onMmCommit"
+        @unit-change="emit('update:unit', $event)"
       />
-      <input
-        type="number"
-        :min="field.min"
-        :max="field.max"
-        :step="field.step"
-        :value="numValue"
-        class="field-num-input"
-        @input="emit('update:modelValue', Number(($event.target as HTMLInputElement).value))"
-      />
-      <span v-if="field.unit" class="field-unit">{{ field.unit }}</span>
+      <template v-else>
+        <input
+          type="range"
+          :min="field.min ?? 0"
+          :max="field.max ?? 100"
+          :step="field.step ?? 1"
+          :value="numValue"
+          class="field-slider"
+          @input="emit('update:modelValue', Number(($event.target as HTMLInputElement).value))"
+        />
+        <input
+          type="number"
+          :min="field.min"
+          :max="field.max"
+          :step="field.step"
+          :value="numValue"
+          class="field-num-input"
+          @input="emit('update:modelValue', Number(($event.target as HTMLInputElement).value))"
+        />
+        <span v-if="field.unit" class="field-unit">{{ field.unit }}</span>
+      </template>
     </div>
 
     <!-- Boolean: toggle switch -->

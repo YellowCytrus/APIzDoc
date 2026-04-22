@@ -2,16 +2,18 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
+from app.models.constants.style_defaults import PAGE_MARGIN_MM_DEFAULT
+
 
 class PageStyles(BaseModel):
     """Стили страницы Typst: #set page(...)."""
 
     paper: str = Field("a4", max_length=64, description="Формат бумаги")
     flipped: bool = Field(False, description="Альбомная ориентация")
-    margin_top: float = Field(2.5, ge=0.0, description="Верхнее поле в cm")
-    margin_bottom: float = Field(2.5, ge=0.0, description="Нижнее поле в cm")
-    margin_left: float = Field(2.5, ge=0.0, description="Левое поле в cm")
-    margin_right: float = Field(2.5, ge=0.0, description="Правое поле в cm")
+    margin_top: float = Field(PAGE_MARGIN_MM_DEFAULT, ge=0.0, description="Верхнее поле в mm")
+    margin_bottom: float = Field(PAGE_MARGIN_MM_DEFAULT, ge=0.0, description="Нижнее поле в mm")
+    margin_left: float = Field(PAGE_MARGIN_MM_DEFAULT, ge=0.0, description="Левое поле в mm")
+    margin_right: float = Field(PAGE_MARGIN_MM_DEFAULT, ge=0.0, description="Правое поле в mm")
     columns: int = Field(1, ge=1, le=10, description="Количество колонок")
     numbering: str = Field("none", max_length=64, description="Нумерация страниц ('none' = нет)")
     number_align: str = Field("center+bottom", max_length=32, description="Позиция номера")

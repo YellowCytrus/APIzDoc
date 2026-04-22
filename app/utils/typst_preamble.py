@@ -5,9 +5,14 @@ Typst использует строки в двойных кавычках; эк
 
 from __future__ import annotations
 
-import re
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any
+
+from app.utils.constants.typst_preamble_constants import (
+    CAPTION_PLACEHOLDER_RE,
+    FONT_ALIASES,
+    HEADING_UNNUMBERED_LEFT_OUTDENT,
+)
 
 if TYPE_CHECKING:
     from app.models.sqlalchemy.profile import Profile
@@ -36,18 +41,11 @@ def _typst_str(s: str) -> str:
     return f'"{escaped}"'
 
 
-# Typst оставляет место под номер даже при скрытой нумерации; компенсируем отрицательным inset.
-_HEADING_UNNUMBERED_LEFT_OUTDENT = "-0.3em"
-
-
-_CAPTION_PLACEHOLDER_RE = re.compile(r"\{([h][1-6]|[N]|content)\}", re.IGNORECASE)
-
-
 def _parse_caption_template(template: str) -> list[tuple[str, str]]:
     """Parse caption template into segments: ('literal', s) or ('placeholder', 'h1'|'h2'|...|'N'|'content')."""
     segments: list[tuple[str, str]] = []
     last_end = 0
-    for m in _CAPTION_PLACEHOLDER_RE.finditer(template):
+    for m in CAPTION_PLACEHOLDER_RE.finditer(template):
         if m.start() > last_end:
             segments.append(("literal", template[last_end : m.start()]))
         raw = m.group(1).lower()
@@ -137,24 +135,13 @@ def _figure_caption_block(template: str) -> list[str]:
     return lines
 
 
-# Шрифты, отсутствующие в Typst → встроенные аналоги
-_FONT_ALIASES: dict[str, str] = {
-    "times new roman": "Libertinus Serif",
-    "times": "Libertinus Serif",
-    "arial": "DejaVu Sans",
-    "helvetica": "DejaVu Sans",
-    "courier new": "DejaVu Sans Mono",
-    "courier": "DejaVu Sans Mono",
-}
-
-
 def _typst_font(font: str) -> str:
     """Нормализует имя шрифта для Typst (алиасы для отсутствующих, пустой → дефолт)."""
     s = (font or "").strip()
     if not s:
         return "libertinus serif"
     key = s.lower()
-    return _FONT_ALIASES.get(key, font)
+    return FONT_ALIASES.get(key, font)
 
 
 def _typst_list_spacing(s: str) -> str:
@@ -226,7 +213,7 @@ def _bullet_list_line(e: BulletListStyle) -> str:
     markers_str = ", ".join(_typst_str(m) for m in e.marker)
     return (
         f"#set list(tight: {str(e.tight).lower()}, "
-        f"indent: {e.indent}pt, body-indent: {e.body_indent}em, "
+        f"indent: {e.indent}mm, body-indent: {e.body_indent}mm, "
         f"spacing: {_typst_list_spacing(e.spacing)}, marker: ({markers_str}))"
     )
 
@@ -260,7 +247,7 @@ def _document_line(e: DocumentStyle) -> str:
     if e.number_width != "auto":
         text_args.append(f"number-width: {_typst_str(e.number_width)}")
     parts.append(f"#set text({', '.join(text_args)})")
-    par_args: list[str] = [f"leading: {e.line_spacing}em"]
+    par_args: list[str] = [f"leading: {e.line_spacing}mm"]
     if e.justify:
         par_args.append("justify: true")
     parts.append(f"#set par({', '.join(par_args)})")
@@ -270,8 +257,8 @@ def _document_line(e: DocumentStyle) -> str:
 def _figure_line(e: FigureStyle) -> str:
     parts: list[str] = []
     img_args: list[str] = []
-    w = f"{e.width}em" if e.width else "auto"
-    h = f"{e.height}em" if e.height else "auto"
+    w = f"{e.width}mm" if e.width else "auto"
+    h = f"{e.height}mm" if e.height else "auto"
     img_args.append(f"width: {w}")
     img_args.append(f"height: {h}")
     if e.fit != "cover":
@@ -280,8 +267,7 @@ def _figure_line(e: FigureStyle) -> str:
     fig_args: list[str] = []
     if e.placement != "none":
         fig_args.append(f"placement: {e.placement}")
-    if e.gap != 0.65:
-        fig_args.append(f"gap: {e.gap}em")
+    fig_args.append(f"gap: {e.gap}mm")
     if not e.outlined:
         fig_args.append("outlined: false")
     if fig_args:
@@ -296,15 +282,12 @@ def _footnote_line(e: FootnoteStyle) -> str:
     parts: list[str] = [
         f"#set footnote(numbering: {_typst_str(e.marker_format)})",
     ]
-    entry_args: list[str] = []
-    if e.clearance != 1.0:
-        entry_args.append(f"clearance: {e.clearance}em")
-    if e.gap != 0.5:
-        entry_args.append(f"gap: {e.gap}em")
-    if e.indent != 1.0:
-        entry_args.append(f"indent: {e.indent}em")
-    if entry_args:
-        parts.append(f"#set footnote.entry({', '.join(entry_args)})")
+    entry_args: list[str] = [
+        f"clearance: {e.clearance}mm",
+        f"gap: {e.gap}mm",
+        f"indent: {e.indent}mm",
+    ]
+    parts.append(f"#set footnote.entry({', '.join(entry_args)})")
     return "\n".join(parts)
 
 
@@ -344,8 +327,8 @@ def _build_heading_numbering_set(
 def _numbered_list_line(e: NumberedListStyle) -> str:
     args: list[str] = [
         f"tight: {str(e.tight).lower()}",
-        f"indent: {e.indent}pt",
-        f"body-indent: {e.body_indent}em",
+        f"indent: {e.indent}mm",
+        f"body-indent: {e.body_indent}mm",
         f"spacing: {_typst_list_spacing(e.spacing)}",
     ]
     if e.numbering != "1.":
@@ -362,11 +345,11 @@ def _numbered_list_line(e: NumberedListStyle) -> str:
 
 
 def _par_line(e: ParStyle) -> str:
-    args: list[str] = [f"spacing: {e.spacing}em"]
+    args: list[str] = [f"spacing: {e.spacing}mm"]
     if e.first_line_indent != 0.0:
-        args.append(f"first-line-indent: (amount: {e.first_line_indent}em, all: true)")
+        args.append(f"first-line-indent: (amount: {e.first_line_indent}mm, all: true)")
     if e.hanging_indent != 0.0:
-        args.append(f"hanging-indent: {e.hanging_indent}em")
+        args.append(f"hanging-indent: {e.hanging_indent}mm")
     if e.linebreaks != "auto":
         args.append(f"linebreaks: {_typst_str(e.linebreaks)}")
     return f"#set par({', '.join(args)})"
@@ -378,16 +361,15 @@ def _quote_line(e: QuoteStyle) -> str:
     if e.quotes != "auto":
         q_args.append(f"quotes: {e.quotes}")
     parts.append(f"#set quote({', '.join(q_args)})")
-    parts.append(f"#show quote: set pad(x: {e.indent}em)")
+    parts.append(f"#show quote: set pad(x: {e.indent}mm)")
     return "\n".join(parts)
 
 
 def _table_line(e: TableStyle) -> str:
-    args: list[str] = [f"stroke: {e.stroke}"]
+    args: list[str] = [f"stroke: {e.stroke}mm"]
     if e.align != "auto":
         args.append(f"align: {e.align}")
-    if e.inset != "5pt":
-        args.append(f"inset: {e.inset}")
+    args.append(f"inset: {e.inset}mm")
     if e.fill != "none":
         args.append(f"fill: {e.fill}")
     return f"#set table({', '.join(args)})"
@@ -402,17 +384,13 @@ def _page_line(e: PageStyle) -> str:
     args: list[str] = [f"{_typst_str(e.paper)}"]
     if e.flipped:
         args.append("flipped: true")
-    margin_parts: list[str] = []
-    if e.margin_top != 2.5:
-        margin_parts.append(f"top: {e.margin_top}cm")
-    if e.margin_bottom != 2.5:
-        margin_parts.append(f"bottom: {e.margin_bottom}cm")
-    if e.margin_left != 2.5:
-        margin_parts.append(f"left: {e.margin_left}cm")
-    if e.margin_right != 2.5:
-        margin_parts.append(f"right: {e.margin_right}cm")
-    if margin_parts:
-        args.append(f"margin: ({', '.join(margin_parts)})")
+    margin_parts: list[str] = [
+        f"top: {e.margin_top}mm",
+        f"bottom: {e.margin_bottom}mm",
+        f"left: {e.margin_left}mm",
+        f"right: {e.margin_right}mm",
+    ]
+    args.append(f"margin: ({', '.join(margin_parts)})")
     if e.columns != 1:
         args.append(f"columns: {e.columns}")
     if e.numbering != "none":
@@ -440,9 +418,8 @@ def _terms_line(e: TermsStyle) -> str:
         f"tight: {str(e.tight).lower()}",
     ]
     if e.indent != 0.0:
-        args.append(f"indent: {e.indent}pt")
-    if e.hanging_indent != 2.0:
-        args.append(f"hanging-indent: {e.hanging_indent}em")
+        args.append(f"indent: {e.indent}mm")
+    args.append(f"hanging-indent: {e.hanging_indent}mm")
     if e.spacing != "auto":
         args.append(f"spacing: {_typst_list_spacing(e.spacing)}")
     return f"#set terms({', '.join(args)})"
@@ -479,7 +456,7 @@ def _heading_level_line(hl: "HeadingLevelStyle") -> str:
         text_args = _text_override_to_typst_args(hl.text_override_style)
         set_parts.append(f"#set text({', '.join(text_args)})")
 
-    outdent = _HEADING_UNNUMBERED_LEFT_OUTDENT
+    outdent = HEADING_UNNUMBERED_LEFT_OUTDENT
     if hl.numbering_enabled:
         content_tail = "#it"
     else:

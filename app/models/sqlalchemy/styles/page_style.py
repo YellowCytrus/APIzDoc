@@ -6,6 +6,7 @@ from sqlalchemy import Boolean, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+from app.models.constants.style_defaults import PAGE_MARGIN_MM_DEFAULT
 
 if TYPE_CHECKING:
     from app.models.sqlalchemy.profile import Profile
@@ -22,10 +23,10 @@ class PageStyle(Base):
     )
     paper: Mapped[str] = mapped_column(String(64), nullable=False, default="a4")
     flipped: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    margin_top: Mapped[float] = mapped_column(Float, nullable=False, default=2.5)
-    margin_bottom: Mapped[float] = mapped_column(Float, nullable=False, default=2.5)
-    margin_left: Mapped[float] = mapped_column(Float, nullable=False, default=2.5)
-    margin_right: Mapped[float] = mapped_column(Float, nullable=False, default=2.5)
+    margin_top: Mapped[float] = mapped_column(Float, nullable=False, default=PAGE_MARGIN_MM_DEFAULT)
+    margin_bottom: Mapped[float] = mapped_column(Float, nullable=False, default=PAGE_MARGIN_MM_DEFAULT)
+    margin_left: Mapped[float] = mapped_column(Float, nullable=False, default=PAGE_MARGIN_MM_DEFAULT)
+    margin_right: Mapped[float] = mapped_column(Float, nullable=False, default=PAGE_MARGIN_MM_DEFAULT)
     columns: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     numbering: Mapped[str] = mapped_column(String(64), nullable=False, default="none")
     number_align: Mapped[str] = mapped_column(String(32), nullable=False, default="center+bottom")

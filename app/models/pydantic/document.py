@@ -2,12 +2,19 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
+from app.models.constants.style_defaults import DOCUMENT_LINE_SPACING_MM_DEFAULT
+
 
 class DocumentStyles(BaseModel):
     """Стили документа Typst: #set text(...) + #set par(leading: ...)."""
 
     font_size: float = Field(12.0, ge=6.0, le=72.0, description="Размер шрифта в pt")
-    line_spacing: float = Field(1.2, ge=0.5, le=3.0, description="Межстрочный интервал в em")
+    line_spacing: float = Field(
+        DOCUMENT_LINE_SPACING_MM_DEFAULT,
+        ge=2.1166666667,
+        le=12.7,
+        description="Межстрочный интервал в mm",
+    )
     font: str = Field("libertinus serif", max_length=255, description="Семейство шрифта")
     weight: Literal[
         "thin",
@@ -32,10 +39,9 @@ class DocumentStyles(BaseModel):
     number_width: Literal["auto", "proportional", "tabular"] = "auto"
     justify: bool = Field(False, description="Выравнивание по ширине (глобально для абзацев)")
 
-
 class DocumentStylesUpdate(BaseModel):
     font_size: Optional[float] = Field(None, ge=6.0, le=72.0)
-    line_spacing: Optional[float] = Field(None, ge=0.5, le=3.0)
+    line_spacing: Optional[float] = Field(None, ge=2.1166666667, le=12.7)
     font: Optional[str] = Field(None, max_length=255)
     weight: Optional[
         Literal[

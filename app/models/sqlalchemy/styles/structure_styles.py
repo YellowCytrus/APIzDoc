@@ -6,6 +6,15 @@ from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, UniqueConstr
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+from app.models.constants.style_defaults import (
+    FIGURE_GAP_MM_DEFAULT,
+    FIGURE_WIDTH_MM_DEFAULT,
+    FOOTNOTE_CLEARANCE_MM_DEFAULT,
+    FOOTNOTE_GAP_MM_DEFAULT,
+    FOOTNOTE_INDENT_MM_DEFAULT,
+    TABLE_INSET_MM_DEFAULT,
+    TABLE_STROKE_MM_DEFAULT,
+)
 
 from app.models.sqlalchemy.styles.base import TextOverrideMixin, TextOverrideStyle
 
@@ -22,10 +31,10 @@ class FigureStyle(TextOverrideMixin, Base):
         unique=True,
         nullable=False,
     )
-    width: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
+    width: Mapped[float] = mapped_column(Float, nullable=False, default=FIGURE_WIDTH_MM_DEFAULT)
     height: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     placement: Mapped[str] = mapped_column(String(32), nullable=False, default="none")
-    gap: Mapped[float] = mapped_column(Float, nullable=False, default=0.65)
+    gap: Mapped[float] = mapped_column(Float, nullable=False, default=FIGURE_GAP_MM_DEFAULT)
     outlined: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     fit: Mapped[str] = mapped_column(String(32), nullable=False, default="cover")
     caption_template: Mapped[Optional[str]] = mapped_column(
@@ -53,9 +62,9 @@ class FootnoteStyle(TextOverrideMixin, Base):
         nullable=False,
     )
     marker_format: Mapped[str] = mapped_column(String(32), nullable=False, default="1")
-    clearance: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
-    gap: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
-    indent: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
+    clearance: Mapped[float] = mapped_column(Float, nullable=False, default=FOOTNOTE_CLEARANCE_MM_DEFAULT)
+    gap: Mapped[float] = mapped_column(Float, nullable=False, default=FOOTNOTE_GAP_MM_DEFAULT)
+    indent: Mapped[float] = mapped_column(Float, nullable=False, default=FOOTNOTE_INDENT_MM_DEFAULT)
     text_override_style_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("text_override_styles.id", ondelete="SET NULL"),
         nullable=True,
@@ -120,9 +129,9 @@ class TableStyle(TextOverrideMixin, Base):
         unique=True,
         nullable=False,
     )
-    stroke: Mapped[str] = mapped_column(String(32), nullable=False, default="0.5pt")
+    stroke: Mapped[float] = mapped_column(Float, nullable=False, default=TABLE_STROKE_MM_DEFAULT)
     align: Mapped[str] = mapped_column(String(32), nullable=False, default="auto")
-    inset: Mapped[str] = mapped_column(String(32), nullable=False, default="5pt")
+    inset: Mapped[float] = mapped_column(Float, nullable=False, default=TABLE_INSET_MM_DEFAULT)
     fill: Mapped[str] = mapped_column(String(64), nullable=False, default="none")
     text_override_style_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("text_override_styles.id", ondelete="SET NULL"),

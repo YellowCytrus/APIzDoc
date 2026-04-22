@@ -4,16 +4,20 @@ import type { FieldDef } from '../../config/styleFields';
 import { TEXT_OVERRIDE_FIELDS } from '../../config/styleFields';
 import type { ElementType } from '../../types/api';
 import StyleFieldInput from './StyleFieldInput.vue';
+import type { Context, Unit } from '../../utils/unitConversion';
 
 const props = defineProps<{
   elementKey: ElementType;
   fields: FieldDef[];
   values: Record<string, unknown>;
   hasTextOverride?: boolean;
+  units: Record<string, Unit | undefined>;
+  context?: Context;
 }>();
 
 const emit = defineEmits<{
-  fieldChange: [elementKey: ElementType, field: string, value: unknown];
+  fieldChange: [elementKey: ElementType, field: string, value: unknown, persist?: boolean];
+  unitChange: [fieldPath: string, unit: Unit];
 }>();
 
 const textOverrideEnabled = computed({
@@ -29,13 +33,25 @@ const textOverrideValues = computed(() => {
   return {};
 });
 
-function onFieldUpdate(fieldKey: string, value: unknown) {
-  emit('fieldChange', props.elementKey, fieldKey, value);
+function onFieldUpdate(fieldKey: string, value: unknown, persist = true) {
+  emit('fieldChange', props.elementKey, fieldKey, value, persist);
 }
 
-function onTextOverrideFieldUpdate(fieldKey: string, value: unknown) {
+function onTextOverrideFieldUpdate(fieldKey: string, value: unknown, persist = true) {
   const merged = { ...textOverrideValues.value, [fieldKey]: value };
-  emit('fieldChange', props.elementKey, 'text_override', merged);
+  emit('fieldChange', props.elementKey, 'text_override', merged, persist);
+}
+
+function onUnitChange(fieldPath: string, unit: Unit) {
+  emit('unitChange', fieldPath, unit);
+}
+
+function fieldUnitPath(fieldKey: string): string {
+  return `${props.elementKey}.${fieldKey}`;
+}
+
+function textOverrideUnitPath(fieldKey: string): string {
+  return `${props.elementKey}.text_override.${fieldKey}`;
 }
 </script>
 
@@ -46,7 +62,10 @@ function onTextOverrideFieldUpdate(fieldKey: string, value: unknown) {
       :key="field.key"
       :field="field"
       :model-value="values[field.key]"
-      @update:model-value="onFieldUpdate(field.key, $event)"
+      :display-unit="units[fieldUnitPath(field.key)]"
+      :context="context"
+      @update:model-value="(value, persist) => onFieldUpdate(field.key, value, persist)"
+      @update:unit="onUnitChange(fieldUnitPath(field.key), $event)"
     />
 
     <!-- Кнопка/переключатель "Задать свой стиль для текста" -->
@@ -69,7 +88,10 @@ function onTextOverrideFieldUpdate(fieldKey: string, value: unknown) {
           :key="field.key"
           :field="field"
           :model-value="textOverrideValues[field.key]"
-          @update:model-value="onTextOverrideFieldUpdate(field.key, $event)"
+          :display-unit="units[textOverrideUnitPath(field.key)]"
+          :context="context"
+          @update:model-value="(value, persist) => onTextOverrideFieldUpdate(field.key, value, persist)"
+          @update:unit="onUnitChange(textOverrideUnitPath(field.key), $event)"
         />
       </div>
     </div>

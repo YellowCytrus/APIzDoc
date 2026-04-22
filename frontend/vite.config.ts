@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
 import topLevelAwait from 'vite-plugin-top-level-await'
 
@@ -8,5 +8,9 @@ export default defineConfig({
   assetsInclude: ['**/*.wasm'],
   optimizeDeps: {
     exclude: ['@myriaddreamin/typst-ts-web-compiler', '@myriaddreamin/typst-ts-renderer'],
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
   },
 })
