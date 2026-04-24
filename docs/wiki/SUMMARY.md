@@ -14,6 +14,7 @@
   - [Обзор Frontend](Frontend/Overview.md)
   - [Управление состоянием](Frontend/StateManagement.md)
   - [Пайплайн рендеринга](Frontend/RenderingPipeline.md)
+  - [MathLive Formula Builder](Frontend/MathLiveBuilder.md)
   - [Редактор стилей](Frontend/StyleEditor.md)
   - [Конвертация единиц измерения](Frontend/UnitConversion.md)
   - [Компоненты](Frontend/Components.md)

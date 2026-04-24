@@ -25,6 +25,17 @@ Frontend приложение состоит из ряда Vue-компонен�
 *   **Загрузка изображений (`onUploadImg`)**: Обрабатывает загрузку изображений через Backend API (`POST /upload-image`), преобразуя загруженные файлы в URL-адреса, которые можно вставить в Markdown. 
 *   **Функциональность обрезки изображений**: Включает модальное окно для обрезки изображений перед загрузкой.
 *   **Drag & Drop**: Поддерживает перетаскивание Markdown или текстовых файлов для загрузки в редактор.
+*   **MathLive Formula Builder**: Кастомный dropdown-тулбар (`MdEditorMathToolbar.vue`) открывает модалку конструктора формул (`MathLiveBuilderModal.vue`) с копированием/вставкой LaTeX.
+
+### [MathLiveBuilderModal.vue](<../../frontend/src/components/MathLiveBuilderModal.vue>)
+
+Модальное окно конструктора формул на базе `math-field`.
+
+*   **Редактирование**: Пользователь вводит формулу в raw-виде (без немедленной трансформации во время ввода).
+*   **Экспорт**: Перед copy/insert применяется `sanitizeLatex()` для совместимости с Pandoc → Typst.
+*   **Виртуальная клавиатура**: Управляется вручную (`virtual-keyboard-mode="manual"`) с управлением фокусом и стабильным открытием.
+
+Подробнее: [MathLive Formula Builder](MathLiveBuilder.md)
 
 ### [TypstPreview.vue](<../../frontend/src/components/TypstPreview.vue>)
 
