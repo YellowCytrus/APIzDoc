@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { MdEditor as MdEditorComponent } from 'md-editor-v3';
+import type { ToolbarNames } from 'md-editor-v3';
 import 'md-editor-v3/lib/style.css';
 import { computed, ref } from 'vue';
 import { useEditorStore } from '../stores/editor';
 import { API_BASE } from '../config';
+import MdEditorMathToolbar from './MdEditorMathToolbar.vue';
+import MathLiveBuilderModal from './MathLiveBuilderModal.vue';
 
 const props = defineProps<{
   modelValue?: string;
@@ -23,9 +26,47 @@ const content = computed({
 });
 
 const editorRef = ref<{ insert: (fn: (s: string) => { targetValue: string }) => void } | null>(null);
+const mathBuilderVisible = ref(false);
+const toolbars: ToolbarNames[] = [
+  'bold',
+  'underline',
+  'italic',
+  '-',
+  'strikeThrough',
+  'title',
+  'sub',
+  'sup',
+  'quote',
+  'unorderedList',
+  'orderedList',
+  '-',
+  'codeRow',
+  'code',
+  'link',
+  'image',
+  'table',
+  'mermaid',
+  0,
+  '-',
+  'revoke',
+  'next',
+  'save',
+  '=',
+  'pageFullscreen',
+  'fullscreen',
+  'preview',
+  'htmlPreview',
+  'catalog',
+  'github',
+];
 
 function insertAtCursor(text: string) {
   editorRef.value?.insert(() => ({ targetValue: text }));
+}
+
+function handleMathInsert(value: string) {
+  insertAtCursor(value);
+  mathBuilderVisible.value = false;
 }
 
 /** Upload images via POST /upload-image; call callBack with URLs /image-assets/{id}/file (md-editor-v3 contract). */
@@ -94,6 +135,7 @@ const cropImageUrl = ref('');
 const cropInputRef = ref<HTMLInputElement | null>(null);
 const cropCanvasRef = ref<HTMLCanvasElement | null>(null);
 const cropPreviewRef = ref<HTMLImageElement | null>(null);
+const showSourceEditor = ref(true);
 let cropImage: HTMLImageElement | null = null;
 let cropX = 0;
 let cropY = 0;
@@ -225,16 +267,40 @@ async function applyCrop() {
       >
         Обрезать
       </button>
+      <button
+        type="button"
+        class="text-xs text-zinc-400 hover:text-zinc-200 px-2 py-1 rounded"
+        :aria-pressed="showSourceEditor"
+        @click="showSourceEditor = !showSourceEditor"
+      >
+        {{ showSourceEditor ? 'Скрыть исходник' : 'Показать исходник' }}
+      </button>
     </div>
-    <MdEditorComponent
-      ref="editorRef"
-      v-model="content"
-      theme="dark"
-      :preview="false"
-      language="ru-RU"
-      placeholder="Введите Markdown..."
-      :no-upload-img="false"
-      :on-upload-img="onUploadImg"
+    
+    <div
+      v-show="showSourceEditor"
+      class="flex-1 min-h-0 overflow-hidden"
+    >
+      <MdEditorComponent
+        ref="editorRef"
+        v-model="content"
+        :toolbars="toolbars"
+        theme="dark"
+        :preview="false"
+        language="ru-RU"
+        placeholder="Введите Markdown..."
+        :no-upload-img="false"
+        :on-upload-img="onUploadImg"
+      >
+        <template #defToolbars>
+          <MdEditorMathToolbar @open-math-live="mathBuilderVisible = true" />
+        </template>
+      </MdEditorComponent>
+    </div>
+    <MathLiveBuilderModal
+      :visible="mathBuilderVisible"
+      @close="mathBuilderVisible = false"
+      @insert="handleMathInsert"
     />
     <Teleport to="body">
       <div

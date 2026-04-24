@@ -18,3 +18,13 @@ declare module 'pandoc-wasm' {
     files: Record<string, string | Blob>
   ): Promise<{ stdout: string; stderr: string; warnings: unknown[] }>;
 }
+
+interface MathfieldElement extends HTMLElement {
+  value: string;
+  position: number | [number, number];
+  focus(): void;
+}
+
+interface HTMLElementTagNameMap {
+  'math-field': MathfieldElement;
+}

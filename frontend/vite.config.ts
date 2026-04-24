@@ -4,7 +4,16 @@ import topLevelAwait from 'vite-plugin-top-level-await'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [vue(), topLevelAwait()],
+  plugins: [
+    vue({
+      template: {
+        compilerOptions: {
+          isCustomElement: (tag) => tag === 'math-field',
+        },
+      },
+    }),
+    topLevelAwait(),
+  ],
   assetsInclude: ['**/*.wasm'],
   optimizeDeps: {
     exclude: ['@myriaddreamin/typst-ts-web-compiler', '@myriaddreamin/typst-ts-renderer'],
